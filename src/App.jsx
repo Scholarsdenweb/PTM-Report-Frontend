@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
+
 import UploadForm from "./Components/UploadForm";
 import LoginForm from "./Components/LoginForm";
 import SidebarLayout from "./Components/SidebarLayout";
@@ -83,6 +84,19 @@ function App() {
           path="*"
           element={<Navigate to={isLoggedIn ? "/uploadForm" : "/login"} />}
         />
+
+
+
+
+          <Route path="/admin/reports" element={ <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>} />
+        <Route path="/admin/reports/:batchId" element={ <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>} />
+        <Route path="/admin/reports/:batchId/:date" element={ <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>} />
       </Routes>
     </Router>
   );
