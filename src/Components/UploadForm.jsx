@@ -16,6 +16,7 @@ const UploadForm = () => {
     try {
       setUploading(true);
       const res = await axios.post(`/ptm/upload`, formData);
+      console.log("res.data", res);
       setResults(res.data.results);
     } catch (err) {
       alert('Error uploading file');
@@ -59,7 +60,7 @@ const UploadForm = () => {
                 <li key={index}>
                   <strong>{r.name}</strong> –{' '}
                   <a
-                    href={r.cloudinaryUrl}
+                    href={r.cloudinaryUrl.secure_url}
                     target="_blank"
                     rel="noreferrer"
                     className="text-blue-600 hover:underline"

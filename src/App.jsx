@@ -1,10 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
-import UploadForm from './Components/UploadForm';
-import LoginForm from './Components/LoginForm';
-import SidebarLayout from './Components/SidebarLayout';
-import axios from '../api/axios';
+import UploadForm from "./Components/UploadForm";
+import LoginForm from "./Components/LoginForm";
+import SidebarLayout from "./Components/SidebarLayout";
+import axios from "../api/axios";
+import AdminReportViewer from "./Components/AdminReportViewer";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -13,7 +19,7 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.get('/auth/me'); // gets user from cookie
+        const res = await axios.get("/auth/me"); // gets user from cookie
         setUser(res.data);
         setIsLoggedIn(true);
       } catch (err) {
@@ -61,6 +67,15 @@ function App() {
             ) : (
               <Navigate to="/login" />
             )
+          }
+        />
+
+        <Route
+          path="/reports"
+          element={
+            <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>
           }
         />
 
