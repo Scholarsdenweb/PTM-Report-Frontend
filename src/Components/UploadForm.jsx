@@ -28,7 +28,7 @@ const UploadForm = () => {
 
   return (
     <div className="flex justify-center p-8 bg-slate-50 max-h-screen overflow-auto ">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-xl text-center">
+      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-xl overflow-auto text-center">
         <h2 className="text-2xl font-semibold text-slate-800 mb-2">📤 PTM Report Uploader</h2>
         <p className="text-slate-500 text-sm mb-6">
           Supported formats: <code>.xlsx</code>, <code>.csv</code>

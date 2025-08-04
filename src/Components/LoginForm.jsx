@@ -25,7 +25,7 @@ const LoginForm = ({ onLogin }) => {
       const user = res.data.user;
       onLogin(user); // Notify parent that login was successful
     } catch (err) {
-      console.error("Login error:", err);
+      console.log("Login error:", err);
       setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
