@@ -16,6 +16,7 @@ const ReportList = ({
 
   const handleDownloadAll = async () => {
     try {
+      setDownloading(true);
       const response = await axios.get(
         `http://localhost:5001/api/batches/admin/reports/download`,
         {
@@ -35,6 +36,8 @@ const ReportList = ({
       alert(
         "Download failed. Make sure data exists for selected batch and date."
       );
+    }finally{
+      setDownloading(false);
     }
   };
 
