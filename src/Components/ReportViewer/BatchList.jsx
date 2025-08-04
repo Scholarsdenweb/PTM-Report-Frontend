@@ -8,7 +8,7 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
       </h3>
 
       <div className="flex flex-wrap gap-3">
-        {batches.map((batch) => {
+        {batches?.map((batch) => {
           const isSelected = batch === selectedBatch;
 
           return (

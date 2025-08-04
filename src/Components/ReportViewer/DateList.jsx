@@ -8,7 +8,7 @@ const DateList = ({ dates, selectedDate, onSelect }) => {
       </h3>
 
       <div className="flex flex-wrap gap-3">
-        {dates.map((date) => {
+        {dates?.map((date) => {
           const dateObj = new Date(date);
           const formattedDate = dateObj.toLocaleDateString(undefined, {
             year: "numeric",

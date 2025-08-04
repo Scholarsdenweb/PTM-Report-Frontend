@@ -84,7 +84,7 @@ const ReportList = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
+          {reports?.map((report) => (
             <div
               key={report._id}
               className="bg-white border rounded-lg shadow hover:shadow-md transition overflow-hidden"

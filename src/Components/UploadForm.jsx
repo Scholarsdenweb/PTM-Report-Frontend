@@ -52,11 +52,11 @@ const UploadForm = () => {
           </button>
         </form>
 
-        {results.length > 0 && (
+        {results?.length > 0 && (
           <div className="mt-8 text-left">
             <h3 className="text-lg font-medium text-slate-700 mb-4">📄 Generated Reports</h3>
             <ul className="space-y-2 list-disc pl-5 text-slate-600">
-              {results.map((r, index) => (
+              {results?.map((r, index) => (
                 <li key={index}>
                   <strong>{r.name}</strong> –{' '}
                   <a
