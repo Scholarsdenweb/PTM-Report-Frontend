@@ -57,6 +57,20 @@ const SidebarLayout = ({ children }) => {
                 📑 Reports
               </NavLink>
             </li>
+            <li>
+              <NavLink
+                to="/uploadPhotos"
+                className={({ isActive }) =>
+                  `block px-3 py-2 rounded-md transition ${
+                    isActive
+                      ? "bg-slate-700 text-white font-medium"
+                      : "hover:bg-slate-700"
+                  }`
+                }
+              >
+                📤 Upload Photos
+              </NavLink>
+            </li>
           </ul>
         </nav>
       </aside>

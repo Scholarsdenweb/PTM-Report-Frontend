@@ -12,6 +12,7 @@ import LoginForm from "./Components/LoginForm";
 import SidebarLayout from "./Components/SidebarLayout";
 import axios from "../api/axios";
 import AdminReportViewer from "./Components/AdminReportViewer";
+import BulkPhotoUploader from "./Components/BulkPhotoUploader";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -64,6 +65,18 @@ function App() {
             isLoggedIn ? (
               <SidebarLayout>
                 <UploadForm />
+              </SidebarLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/uploadPhotos"
+          element={
+            isLoggedIn ? (
+              <SidebarLayout>
+                <BulkPhotoUploader />
               </SidebarLayout>
             ) : (
               <Navigate to="/login" />

@@ -17,7 +17,7 @@ const AdminReportViewer = () => {
   const [reports, setReports] = useState([]);
   const [currentPage, setCurrentPage] = useState(pageFromQuery);
   const [totalPages, setTotalPages] = useState(1);
-  const [filter, setFilter] = useState({ name: "", rollNumber: "" });
+  const [filter, setFilter] = useState({ name: "", rollNo: "" });
 
   useEffect(() => {
     axios.get("/batches")
@@ -42,7 +42,7 @@ const AdminReportViewer = () => {
             date,
             page: currentPage,
             name: filter.name,
-            rollNumber: filter.rollNumber,
+            rollNo: filter.rollNo,
           },
         })
         .then((res) => {

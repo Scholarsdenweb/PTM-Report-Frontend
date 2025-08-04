@@ -13,72 +13,28 @@ const ReportList = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
 
-  // const handleDownloadAll = async () => {
-  //   try {
-
-  //     console.log("testdata", reports);
-  //     setDownloading(true);
-
-  //     const url = `/api/reports/download?batch=${batchId}&date=${date}&name=${encodeURIComponent(
-  //       filter?.name || ""
-  //     )}&rollNo=${encodeURIComponent(filter?.rollNo || "")}`;
-
-  //     const response = await axios.post(url);
-
-  //     console.log("response from download ", response.json());
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to download reports.");
-  //     }
-
-  //     const blob = await response.blob();
-  //     const blobUrl = window.URL.createObjectURL(blob);
-  //     const a = document.createElement("a");
-
-  //     a.href = blobUrl;
-  //     a.download = `Reports-${batchId}-${date}.zip`;
-  //     document.body.appendChild(a);
-  //     a.click();
-  //     a.remove();
-  //     window.URL.revokeObjectURL(blobUrl);
-  //   } catch (err) {
-  //     console.error("Download error:", err);
-  //     alert("Failed to download reports.");
-  //   } finally {
-  //     setDownloading(false);
-  //   }
-  // };
 
   const handleDownloadAll = async () => {
     try {
-      setDownloading(true);
+      const response = await axios.get(
+        `http://localhost:5001/api/batches/admin/reports/download`,
+        {
+          params: { batch: batchId, date },
+          responseType: "blob", // Important for downloading
+        }
+      );
 
-      const url = `/api/reports/download?batch=${batchId}&date=${date}&name=${encodeURIComponent(
-        filter?.name || ""
-      )}&rollNo=${encodeURIComponent(filter?.rollNo || "")}`;
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const error = await response.json();
-        alert(`Download failed: ${error.error}`);
-        return;
-      }
-
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `Reports-${batchId}-${date}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      const blob = new Blob([response.data], { type: "application/zip" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `PTM_Reports_${batchId}_${date}.zip`;
+      link.click();
     } catch (err) {
-      console.error("Download error:", err);
-      alert("Unexpected error occurred.");
-    } finally {
-      setDownloading(false);
+
+      console.log(" from downloading files", err);
+      alert(
+        "Download failed. Make sure data exists for selected batch and date."
+      );
     }
   };
 
@@ -100,9 +56,9 @@ const ReportList = ({
           <input
             type="text"
             placeholder="Filter by Roll No"
-            value={filter?.rollNumber}
+            value={filter?.rollNo}
             onChange={(e) =>
-              setFilter((prev) => ({ ...prev, rollNumber: e.target.value }))
+              setFilter((prev) => ({ ...prev, rollNo: e.target.value }))
             }
             className="border rounded px-4 py-2 w-full sm:w-64"
           />
