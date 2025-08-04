@@ -6,7 +6,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-
 import UploadForm from "./Components/UploadForm";
 import LoginForm from "./Components/LoginForm";
 import SidebarLayout from "./Components/SidebarLayout";
@@ -22,15 +21,21 @@ function App() {
     const checkAuth = async () => {
       try {
         const res = await axios.get("/auth/me"); // gets user from cookie
+        console.log("res from chechAuth", res);
         setUser(res.data);
         setIsLoggedIn(true);
       } catch (err) {
+        console.log("error", err);
         setIsLoggedIn(false);
       }
     };
 
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    console.log("isLoggedIn", isLoggedIn);
+  }, [isLoggedIn]);
 
   if (isLoggedIn === null) {
     return (
@@ -98,18 +103,30 @@ function App() {
           element={<Navigate to={isLoggedIn ? "/uploadForm" : "/login"} />}
         />
 
-
-
-
-          <Route path="/admin/reports" element={ <SidebarLayout>
+        <Route
+          path="/admin/reports"
+          element={
+            <SidebarLayout>
               <AdminReportViewer />
-            </SidebarLayout>} />
-        <Route path="/admin/reports/:batchId" element={ <SidebarLayout>
+            </SidebarLayout>
+          }
+        />
+        <Route
+          path="/admin/reports/:batchId"
+          element={
+            <SidebarLayout>
               <AdminReportViewer />
-            </SidebarLayout>} />
-        <Route path="/admin/reports/:batchId/:date" element={ <SidebarLayout>
+            </SidebarLayout>
+          }
+        />
+        <Route
+          path="/admin/reports/:batchId/:date"
+          element={
+            <SidebarLayout>
               <AdminReportViewer />
-            </SidebarLayout>} />
+            </SidebarLayout>
+          }
+        />
       </Routes>
     </Router>
   );
