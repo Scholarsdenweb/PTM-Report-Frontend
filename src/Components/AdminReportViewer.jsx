@@ -20,15 +20,23 @@ const AdminReportViewer = () => {
   const [filter, setFilter] = useState({ name: "", rollNo: "" });
 
   useEffect(() => {
-    axios.get("/batches")
-      .then((res) => setBatches(res.data.batches))
+    axios
+      .get("/batches")
+      .then((res) => {
+        console.log("batches", res);
+        setBatches(res.data.batches);
+      })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     if (batchId) {
-      axios.get(`/batches/${batchId}/dates`)
-        .then((res) => setDates(res.data.dates))
+      axios
+        .get(`/batches/${batchId}/dates`)
+        .then((res) => {
+          console.log("batches", res);
+          setDates(res.data.dates);
+        })
         .catch(console.error);
     }
   }, [batchId]);
@@ -46,6 +54,7 @@ const AdminReportViewer = () => {
           },
         })
         .then((res) => {
+          console.log("batchesId and date", res);
           setReports(res.data.reports);
           setCurrentPage(res.data.currentPage);
           setTotalPages(res.data.totalPages);
@@ -57,12 +66,6 @@ const AdminReportViewer = () => {
   const handleBatchSelect = (batch) => {
     navigate(`/admin/reports/${batch}`);
   };
-
-
-
-
-
-  
 
   const handleDateSelect = (selectedDate) => {
     navigate(`/admin/reports/${batchId}/${selectedDate}?page=1`);
@@ -105,11 +108,7 @@ const AdminReportViewer = () => {
       )}
 
       {batchId && !date && (
-        <DateList
-          dates={dates}
-          onSelect={handleDateSelect}
-          selected={date}
-        />
+        <DateList dates={dates} onSelect={handleDateSelect} selected={date} />
       )}
 
       {batchId && date && (
@@ -120,7 +119,7 @@ const AdminReportViewer = () => {
           page={currentPage}
           setPage={handlePageChange}
           totalPages={totalPages}
-          batchId= {batchId}
+          batchId={batchId}
           date={date}
         />
       )}
