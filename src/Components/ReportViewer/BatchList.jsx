@@ -7,7 +7,7 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
         Select Batch
       </h3>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3  ">
         {batches?.map((batch) => {
           const isSelected = batch === selectedBatch;
 
@@ -15,7 +15,7 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
             <button
               key={batch}
               onClick={() => onSelect(batch)}
-              className={`px-5 py-2 rounded-lg border text-sm font-medium shadow-sm transition-all duration-200
+              className={` w-1/4 justify-center items-center rounded-lg border text-sm font-medium shadow-sm transition-all duration-200
                 ${
                   isSelected
                     ? "bg-blue-600 text-white shadow-md"

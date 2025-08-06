@@ -7,6 +7,7 @@ const REQUIRED_COLUMNS = ['Name']; // Customize this
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
+  const [ptmDate, setPtmDate] = useState('');
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState([]);
   const [warnings, setWarnings] = useState([]);
@@ -45,7 +46,7 @@ const UploadForm = () => {
         return;
       }
 
-      validateAndPreview(data);
+      // validateAndPreview(data);
     };
 
     if (ext === 'csv') {
@@ -61,7 +62,6 @@ const UploadForm = () => {
     const headers = Object.keys(data[0] || {});
     const seenRows = new Set();
 
-    // Missing required columns
     const missing = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
     if (missing.length) {
       issues.push(`Missing required columns: ${missing.join(', ')}`);
@@ -79,7 +79,6 @@ const UploadForm = () => {
         }
       });
 
-      // Duplicate row check
       if (seenRows.has(rowString)) {
         issues.push(`Row ${rowIndex + 1}: Duplicate row detected.`);
       } else {
@@ -88,7 +87,7 @@ const UploadForm = () => {
     });
 
     setInvalidCells(invalids);
-    setWarnings([...new Set(issues)]); // Remove duplicates
+    setWarnings([...new Set(issues)]);
     setDataPreview(data);
     setHeaders(headers);
   };
@@ -98,13 +97,15 @@ const UploadForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file || warnings.length > 0) {
-      alert('Please fix all issues before uploading.');
+
+    if (!file || warnings.length > 0 || !ptmDate) {
+      alert('Please select PTM date and fix all issues before uploading.');
       return;
     }
 
     const formData = new FormData();
     formData.append('csvFile', file);
+    formData.append('ptmDate', ptmDate);
 
     try {
       setUploading(true);
@@ -127,12 +128,32 @@ const UploadForm = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
+
+          {/* PTM Date Input */}
+          <label className=" w-full flex justify-center text-sm text-slate-700 font-medium self-start" htmlFor="ptmDate">
+            <div className='w-1/2 flex justify-start'>
+
+            Select PTM Date:
+            </div>
+          </label>
+          <input
+            id="ptmDate"
+            type="date"
+            value={ptmDate}
+            onChange={(e) => setPtmDate(e.target.value)}
+            required
+            className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm"
+          />
+
+          {/* File Input */}
           <input
             type="file"
             accept=".xlsx,.csv"
             onChange={handleFileChange}
             className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
+
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={uploading || warnings.length > 0}

@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import Loading from "../utils/Loading";
 
 import UploadForm from "./Components/UploadForm";
 import LoginForm from "./Components/LoginForm";
@@ -40,10 +41,12 @@ function App() {
   if (isLoggedIn === null) {
     return (
       <div className="flex justify-center items-center h-screen text-slate-600">
-        Checking session...
+        <Loading />
       </div>
     );
   }
+
+  const role = document.cookie("role");
 
   return (
     <Router>
@@ -52,7 +55,11 @@ function App() {
           path="/login"
           element={
             isLoggedIn ? (
-              <Navigate to="/uploadForm" />
+              role === "Faculty" ? (
+                <Navigate to="/facultyDashboard" />
+              ) : (
+                <Navigate to="/uploadForm" />
+              )
             ) : (
               <LoginForm
                 onLogin={(userData) => {
@@ -76,6 +83,17 @@ function App() {
             )
           }
         />
+
+
+<Route path="/facultyDashboard" element={<SidebarLayout>
+
+<FacultyDashboard/>
+
+</SidebarLayout>} />
+
+
+
+
         <Route
           path="/uploadPhotos"
           element={
