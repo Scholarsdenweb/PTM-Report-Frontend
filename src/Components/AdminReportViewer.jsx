@@ -6,6 +6,8 @@ import DateList from "./ReportViewer/DateList";
 import ReportList from "./ReportViewer/ReportList";
 import BackButton from "./ReportViewer/BackButton";
 import Loading from "../../utils/Loading";
+import { getCookie } from "../../utils/getCookie";
+import Breadcrumb from "../../utils/Breadcrumb";
 
 const AdminReportViewer = () => {
   const { batchId, date } = useParams();
@@ -81,19 +83,19 @@ const AdminReportViewer = () => {
   }, [batchId, date, currentPage, filter]);
 
   const handleBatchSelect = (batch) => {
-    navigate(`/admin/reports/${batch}`);
+    navigate(`/reports/${batch}`);
   };
 
   const handleDateSelect = (selectedDate) => {
-    navigate(`/admin/reports/${batchId}/${selectedDate}?page=1`);
+    navigate(`/reports/${batchId}/${selectedDate}?page=1`);
     setCurrentPage(1);
   };
 
   const handleBack = () => {
     if (date) {
-      navigate(`/admin/reports/${batchId}`);
+      navigate(`/reports/${batchId}`);
     } else if (batchId) {
-      navigate(`/admin/reports`);
+      navigate(`/reports`);
     }
   };
 
@@ -108,11 +110,14 @@ const AdminReportViewer = () => {
     setSearchParams({ page: 1 });
   };
 
+  const role = getCookie("role");
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {loading && <Loading />}
+      <Breadcrumb/>
       <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        Admin Report Viewer
+        {role} Report Viewer
       </h2>
 
       {(batchId || date) && <BackButton onClick={handleBack} />}

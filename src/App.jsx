@@ -13,6 +13,8 @@ import SidebarLayout from "./Components/SidebarLayout";
 import axios from "../api/axios";
 import AdminReportViewer from "./Components/AdminReportViewer";
 import BulkPhotoUploader from "./Components/BulkPhotoUploader";
+import { getCookie } from "../utils/getCookie";
+import FacultyDashboard from "./Components/FacultyDashboard";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -46,7 +48,10 @@ function App() {
     );
   }
 
-  const role = document.cookie("role");
+  const role = getCookie("role");
+  const tokenFormCookie = getCookie("token");
+  console.log("role", role);
+  console.log("tokenFormCookie", tokenFormCookie);
 
   return (
     <Router>
@@ -56,7 +61,7 @@ function App() {
           element={
             isLoggedIn ? (
               role === "Faculty" ? (
-                <Navigate to="/facultyDashboard" />
+                <Navigate to="/reports" />
               ) : (
                 <Navigate to="/uploadForm" />
               )
@@ -84,15 +89,17 @@ function App() {
           }
         />
 
+        <Route
+          path="/facultyDashboard"
+          element={
+            <SidebarLayout>
+          
 
-<Route path="/facultyDashboard" element={<SidebarLayout>
-
-<FacultyDashboard/>
-
-</SidebarLayout>} />
-
-
-
+              <AdminReportViewer />
+        
+            </SidebarLayout>
+          }
+        />
 
         <Route
           path="/uploadPhotos"
@@ -118,11 +125,28 @@ function App() {
 
         <Route
           path="*"
-          element={<Navigate to={isLoggedIn ? "/uploadForm" : "/login"} />}
+          element={<Navigate to={isLoggedIn ? role==="Admin" ? "/uploadForm" : "/reports" : "/login"} />}
         />
 
         <Route
-          path="/admin/reports"
+          path="/reports"
+          element={
+            <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>
+          }
+        />
+        {/* <Route
+          path="/faculty/reports"
+          element={
+            <SidebarLayout>
+              <AdminReportViewer />
+            </SidebarLayout>
+          }
+        /> */}
+
+        <Route
+          path="/reports/:batchId"
           element={
             <SidebarLayout>
               <AdminReportViewer />
@@ -130,15 +154,7 @@ function App() {
           }
         />
         <Route
-          path="/admin/reports/:batchId"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        />
-        <Route
-          path="/admin/reports/:batchId/:date"
+          path="/reports/:batchId/:date"
           element={
             <SidebarLayout>
               <AdminReportViewer />

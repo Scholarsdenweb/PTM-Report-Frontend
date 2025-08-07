@@ -18,7 +18,7 @@ const ReportList = ({
     try {
       setDownloading(true);
       const response = await axios.get(
-        `/batches/admin/reports/download`,
+        `/batches/reports/download`,
         {
           params: { batch: batchId, date },
           responseType: "blob", // Important for downloading

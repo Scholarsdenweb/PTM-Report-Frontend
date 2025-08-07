@@ -1,12 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import axios from "../../api/axios";
+import { getCookie } from "../../utils/getCookie"; // Adjust import as needed
 
 const SidebarLayout = ({ children }) => {
   const location = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [role, setRole] = useState(null);
 
-  const isReportsActive = location.pathname.startsWith("/admin/reports");
+  const isReportsActive = location.pathname.startsWith("/reports");
+
+  useEffect(() => {
+    const roleFromCookie = getCookie("role");
+    setRole(roleFromCookie);
+  }, []);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -19,8 +26,21 @@ const SidebarLayout = ({ children }) => {
     }
   };
 
+  // Define role-based menu items
+  const menuItems = [
+    ...(role === "Admin" 
+      ? [{ to: "/uploadForm", label: "📤 Upload" }]
+      : []),
+    ...(role === "Admin" || role === "Faculty"
+      ? [{ to: role==="Admin" ? "/reports" : "/facultyDashboard", label: "📑 Reports", isActive: isReportsActive }]
+      : []),
+    ...(role === "Admin"
+      ? [{ to: "/uploadPhotos", label: "📷 Upload Photos" }]
+      : []),
+  ];
+
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <div className="flex min-h-screen max-w-screen bg-slate-50 font-sans">
       {/* Sidebar */}
       <aside
         className="w-56 bg-slate-900 text-slate-100 p-6 flex flex-col justify-between
@@ -35,11 +55,7 @@ const SidebarLayout = ({ children }) => {
 
           <nav>
             <ul className="space-y-2">
-              {[
-                { to: "/uploadForm", label: "📤 Upload" },
-                { to: "/admin/reports", label: "📑 Reports", isActive: isReportsActive },
-                { to: "/uploadPhotos", label: "📷 Upload Photos" },
-              ].map(({ to, label, isActive }, idx) => (
+              {menuItems.map(({ to, label, isActive }, idx) => (
                 <li key={idx}>
                   <NavLink
                     to={to}
