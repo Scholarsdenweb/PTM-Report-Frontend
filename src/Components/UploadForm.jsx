@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
 
-const REQUIRED_COLUMNS = ["Name", "Roll No.", "Batch", "Str"]; // Customize this
+const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Str"];
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -28,155 +28,132 @@ const UploadForm = () => {
 
     if (!selectedFile) return;
 
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      alert("❌ File too large. Please upload a file smaller than 50MB.");
+      return;
+    }
+
     const reader = new FileReader();
     const ext = selectedFile.name.split(".").pop().toLowerCase();
 
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
+      setUploading(true); // show spinner
+      await new Promise((resolve) => setTimeout(resolve, 100)); // allow UI to update
+
       let data = [];
 
-      if (ext === "csv") {
-        const parsed = Papa.parse(event.target.result, {
-          header: true,
-          skipEmptyLines: true,
-        });
-        data = parsed.data;
-      } else if (ext === "xlsx") {
-        const workbook = XLSX.read(event.target.result, { type: "binary" });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        data = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-      } else {
-        setWarnings(["❌ Unsupported file format"]);
-        return;
-      }
+      try {
+        if (ext === "csv") {
+          const parsed = Papa.parse(event.target.result, {
+            header: true,
+            skipEmptyLines: true,
+          });
+          data = parsed.data;
+        } else if (ext === "xlsx") {
+          const workbook = XLSX.read(event.target.result, { type: "array" });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          data = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+        } else {
+          setWarnings(["❌ Unsupported file format"]);
+          return;
+        }
 
-      validateAndPreview(data);
+        validateAndPreview(data);
+      } catch (err) {
+        console.error("Parsing error:", err);
+        alert("❌ Error reading the file. Please try again.");
+      } finally {
+        setUploading(false);
+      }
     };
 
     if (ext === "csv") {
       reader.readAsText(selectedFile);
     } else if (ext === "xlsx") {
-      reader.readAsBinaryString(selectedFile);
+      reader.readAsArrayBuffer(selectedFile);
     }
   };
+const normalize = (str) => str?.toString().toLowerCase().replace(/[^a-z0-9]/gi, "");
 
-  // const validateAndPreview = (data) => {
-  //   const issues = [];
-  //   const invalids = [];
-  //   const headers = Object.keys(data[0] || {});
-  //   const seenRows = new Set();
+const validateAndPreview = (data) => {
+  const requiredIssues = new Set();
+  const optionalWarnings = new Set();
+  const invalids = [];
 
-  //   const missing = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
-  //   if (missing.length) {
-  //     issues.push(`Missing required columns: ${missing.join(', ')}`);
-  //   }
+  if (!data || !data.length) {
+    requiredIssues.add("❌ No data found in file.");
+    setWarnings([...requiredIssues]);
+    setHasErrors(true);
+    return;
+  }
 
-  //   data.forEach((row, rowIndex) => {
-  //     let rowString = '';
-  //     REQUIRED_COLUMNS.forEach((col) => {
-  //       const value = row[col];
-  //       rowString += `${col}:${value};`;
+  const rawHeaders = Object.keys(data[0]);
+  const normalizedHeaders = rawHeaders.map(normalize);
 
-  //       if (!value || value.toString().trim() === '') {
-  //         invalids.push({ row: rowIndex, field: col });
-  //         issues.push(`Row ${rowIndex + 1}: "${col}" is empty.`);
-  //       }
-  //     });
-
-  //     if (seenRows.has(rowString)) {
-  //       issues.push(`Row ${rowIndex + 1}: Duplicate row detected.`);
-  //     } else {
-  //       seenRows.add(rowString);
-  //     }
-  //   });
-
-  //   setInvalidCells(invalids);
-  //   setWarnings([...new Set(issues)]);
-  //   setDataPreview(data);
-  //   setHeaders(headers);
-  // };
-
-  const validateAndPreview = (data) => {
-    const requiredIssues = new Set();
-    const optionalWarnings = new Set();
-    const invalids = [];
-    const headers = Object.keys(data[0] || {});
-    const seenRows = new Set();
-
-    // Check for missing required headers
-    const missing = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
-    if (missing.length) {
-      requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
+  // Map required columns to actual header names in the file
+  const headerMap = {};
+  REQUIRED_COLUMNS.forEach((reqCol) => {
+    const normalizedReq = normalize(reqCol);
+    const index = normalizedHeaders.findIndex((h) => h === normalizedReq);
+    if (index !== -1) {
+      headerMap[reqCol] = rawHeaders[index]; // e.g., "ROLL NO" => "Roll No."
     }
+  });
 
-    data.forEach((row, rowIndex) => {
-      const rollNo = row["Roll No."]; // Only use Roll No. to detect duplicates
+  // Check for missing headers
+  const missing = REQUIRED_COLUMNS.filter((col) => !headerMap[col]);
+  if (missing.length) {
+    requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
+  }
 
-      headers.forEach((col) => {
-        const value = row[col];
-        const isRequired = REQUIRED_COLUMNS.includes(col);
+  const seenRollNos = new Set();
 
-        if (!value || value.toString().trim() === "") {
-          invalids.push({ row: rowIndex, field: col });
+  data.forEach((row, rowIndex) => {
+    const rollNoKey = headerMap["ROLL NO"];
+    const rollNo = row[rollNoKey];
 
-          const message = isRequired
-            ? `Row ${rowIndex + 1}: "${col}" is required.`
-            : `Row ${rowIndex + 1}: "${col}" is empty.`;
+    rawHeaders.forEach((col) => {
+      const value = row[col];
+      const isRequired = Object.values(headerMap).includes(col);
 
-          if (isRequired) {
-            requiredIssues.add(message);
-          } else {
-            optionalWarnings.add(message);
-          }
+      if (!value || value.toString().trim() === "") {
+        invalids.push({ row: rowIndex, field: col });
+
+        const message = isRequired
+          ? `Row ${rowIndex + 1}: "${col}" is required.`
+          : `Row ${rowIndex + 1}: "${col}" is empty.`;
+
+        if (isRequired) {
+          requiredIssues.add(message);
+        } else {
+          optionalWarnings.add(message);
         }
-      });
+      }
+    });
 
-      if (seenRows.has(rollNo)) {
+    // Duplicate Roll No. check
+    if (rollNoKey) {
+      if (seenRollNos.has(rollNo)) {
         requiredIssues.add(
           `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
         );
       } else {
-        seenRows.add(rollNo);
+        seenRollNos.add(rollNo);
       }
-    });
+    }
+  });
 
-    console.log("requiredIssues", requiredIssues.size);
+  setInvalidCells(invalids);
+  setWarnings([...requiredIssues, ...optionalWarnings]);
+  setDataPreview(data.slice(0, 100));
+  setHeaders(rawHeaders);
+  setHasErrors(requiredIssues.size > 0);
+  setHasOptionalWarnings(optionalWarnings.size > 0);
+};
 
-    setInvalidCells(invalids);
-    setWarnings([...requiredIssues, ...optionalWarnings]);
-    setDataPreview(data);
-    setHeaders(headers);
-
-    // Store the flags for submit handler to use
-    setHasErrors(requiredIssues.size > 0);
-    setHasOptionalWarnings(optionalWarnings.size > 0);
-  };
 
   const isCellInvalid = (rowIndex, header) =>
     invalidCells.some((cell) => cell.row === rowIndex && cell.field === header);
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   if (!file || warnings.length > 0 || !ptmDate) {
-  //     alert('Please select PTM date and fix all issues before uploading.');
-  //     return;
-  //   }
-
-  //   const formData = new FormData();
-  //   formData.append('csvFile', file);
-  //   formData.append('ptmDate', ptmDate);
-
-  //   try {
-  //     setUploading(true);
-  //     const res = await axios.post(`/ptm/upload`, formData);
-  //     setResults(res.data.results || []);
-  //   } catch (err) {
-  //     alert('❌ Error uploading file');
-  //     console.error(err);
-  //   } finally {
-  //     setUploading(false);
-  //   }
-  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -214,8 +191,6 @@ const UploadForm = () => {
       const res = await axios.post(`/ptm/upload`, formData);
       setResults(res.data.results || []);
     } catch (err) {
-
-      console.log("error before alert" , err);
       alert("❌ Error uploading file");
       console.error(err);
     } finally {
@@ -224,7 +199,7 @@ const UploadForm = () => {
   };
 
   return (
-    <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4 ">
+    <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
       <Breadcrumb />
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full text-center">
         <h2 className="text-2xl font-semibold text-slate-800 mb-2">
@@ -238,11 +213,7 @@ const UploadForm = () => {
           onSubmit={handleSubmit}
           className="flex flex-col items-center gap-4"
         >
-          {/* PTM Date Input */}
-          <label
-            className=" w-full flex justify-center text-sm text-slate-700 font-medium self-start"
-            htmlFor="ptmDate"
-          >
+          <label className="w-full flex justify-center text-sm text-slate-700 font-medium self-start">
             <div className="w-1/2 flex justify-start">Select PTM Date:</div>
           </label>
           <input
@@ -254,21 +225,12 @@ const UploadForm = () => {
             className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm"
           />
 
-          {/* File Input */}
           <input
             type="file"
             accept=".xlsx,.csv"
             onChange={handleFileChange}
             className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
-
-          {/* Submit Button */}
-
-          {console.log(
-            "uploading || hasErrors.length > 0",
-            uploading || hasErrors.length > 0,
-            hasErrors.length > 0
-          )}
 
           <button
             type="submit"
@@ -283,21 +245,26 @@ const UploadForm = () => {
           </button>
         </form>
 
-        {/* Warnings */}
         {warnings.length > 0 && (
           <div className="mt-6 bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded text-left">
             <h4 className="font-semibold mb-2">⚠️ Validation Warnings:</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              {warnings.map((warn, idx) => (
-                <li key={idx}>{warn}</li>
-              ))}
-            </ul>
+
+            {/* Scrollable container */}
+            <div className="max-h-52 overflow-y-auto pr-2">
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {warnings.map((warn, idx) => (
+                  <li key={idx}>{warn}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
 
-        {/* Data preview */}
         {dataPreview.length > 0 && (
           <div className="mt-8 overflow-auto max-h-[400px] border border-gray-300 rounded">
+            <p className="text-xs p-2 text-gray-500">
+              Showing first 100 rows for preview.
+            </p>
             <table className="min-w-full text-left text-xs">
               <thead>
                 <tr>
@@ -330,7 +297,6 @@ const UploadForm = () => {
           </div>
         )}
 
-        {/* Upload Results */}
         {results?.length > 0 && (
           <div className="mt-8 text-left">
             <h3 className="text-lg font-medium text-slate-700 mb-4">
@@ -359,3 +325,297 @@ const UploadForm = () => {
 };
 
 export default UploadForm;
+
+// // src/components/UploadForm.jsx
+
+// import React, { useState } from "react";
+// import axios from "../../api/axios";
+// import Breadcrumb from "../../utils/Breadcrumb";
+// import * as XLSX from "xlsx";
+
+// // 👇 Import the Web Worker using workerize-loader
+// // import FileWorker from "../workers/fileWorker.js";
+
+// const REQUIRED_COLUMNS = ["Name", "Roll No.", "Batch", "Str"]; // Adjust as needed
+
+// const UploadForm = () => {
+//   const [file, setFile] = useState(null);
+//   const [ptmDate, setPtmDate] = useState("");
+//   const [hasErrors, setHasErrors] = useState(false);
+//   const [hasOptionalWarnings, setHasOptionalWarnings] = useState(false);
+//   const [uploading, setUploading] = useState(false);
+//   const [results, setResults] = useState([]);
+//   const [warnings, setWarnings] = useState([]);
+//   const [dataPreview, setDataPreview] = useState([]);
+//   const [headers, setHeaders] = useState([]);
+//   const [invalidCells, setInvalidCells] = useState([]);
+
+// const handleFileChange = (e) => {
+//   const selectedFile = e.target.files[0];
+//   console.log("📁 File selected:", selectedFile);
+
+//   setFile(selectedFile);
+//   setWarnings([]);
+//   setResults([]);
+//   setInvalidCells([]);
+//   setDataPreview([]);
+
+//   if (!selectedFile) return;
+
+//   const ext = selectedFile.name.split(".").pop().toLowerCase();
+//   const fileType = ext === "csv" ? "csv" : ext === "xlsx" ? "xlsx" : null;
+
+//   if (!fileType) {
+//     setWarnings(["❌ Unsupported file format"]);
+//     return;
+//   }
+
+//   const reader = new FileReader();
+
+//   reader.onload = (evt) => {
+//     const fileContent = evt.target.result;
+
+//     // Create worker using native vite syntax
+//     const worker = new Worker(
+//       new URL("../workers/fileWorker.js", import.meta.url),
+//       { type: "module" }
+//     );
+
+//     console.log("🛠 Worker created, sending file content...");
+
+//     worker.postMessage({ fileContent, fileType });
+//           validateAndPreview(fileContent);
+
+//     // worker.onmessage = (event) => {
+//     //   const { data, error } = event.data;
+//     //   console.log("📨 Received from worker:", event.data);
+
+//     //   if (error) {
+//     //     setWarnings([error]);
+//     //     return;
+//     //   }
+
+//     //   worker.terminate(); // terminate worker when done
+//     // };
+
+//     worker.onerror = (err) => {
+//       console.error("❌ Worker error:", err);
+//       setWarnings(["❌ Worker crashed or failed to parse file."]);
+//       worker.terminate();
+//     };
+//   };
+
+//   if (fileType === "xlsx") {
+//     reader.readAsBinaryString(selectedFile);
+//   } else {
+//     reader.readAsText(selectedFile);
+//   }
+// };
+
+//   const validateAndPreview = (data) => {
+//     console.log("validateAndPreview funtion is working", data);
+//     const requiredIssues = new Set();
+//     const optionalWarnings = new Set();
+//     const invalids = [];
+//     const headers = Object.keys(data[0] || {});
+//     const seenRollNos = new Set();
+
+//     const missing = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
+//     if (missing.length) {
+//       requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
+//     }
+
+//     data.forEach((row, rowIndex) => {
+//       const rollNo = row["Roll No."];
+//       headers.forEach((col) => {
+//         const value = row[col];
+//         const isRequired = REQUIRED_COLUMNS.includes(col);
+
+//         if (!value || value.toString().trim() === "") {
+//           invalids.push({ row: rowIndex, field: col });
+//           const message = isRequired
+//             ? `Row ${rowIndex + 1}: "${col}" is required.`
+//             : `Row ${rowIndex + 1}: "${col}" is empty.`;
+
+//           if (isRequired) requiredIssues.add(message);
+//           else optionalWarnings.add(message);
+//         }
+//       });
+
+//       if (seenRollNos.has(rollNo)) {
+//         requiredIssues.add(
+//           `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
+//         );
+//       } else {
+//         seenRollNos.add(rollNo);
+//       }
+//     });
+
+//     setInvalidCells(invalids);
+//     setWarnings([...requiredIssues, ...optionalWarnings]);
+//     setDataPreview(data);
+//     setHeaders(headers);
+//     setHasErrors(requiredIssues.size > 0);
+//     setHasOptionalWarnings(optionalWarnings.size > 0);
+//   };
+
+//   const isCellInvalid = (rowIndex, header) =>
+//     invalidCells.some((cell) => cell.row === rowIndex && cell.field === header);
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+
+//     if (!file) return alert("Please select a file.");
+//     if (!ptmDate) return alert("Please select PTM date.");
+//     if (hasErrors)
+//       return alert("❌ Submission blocked: Required fields are missing.");
+
+//     if (hasOptionalWarnings) {
+//       const confirmProceed = window.confirm(
+//         "⚠️ Some optional fields are empty.\nDo you want to continue?"
+//       );
+//       if (!confirmProceed) return;
+//     }
+
+//     const formData = new FormData();
+//     formData.append("csvFile", file);
+//     formData.append("ptmDate", ptmDate);
+
+//     try {
+//       setUploading(true);
+//       const res = await axios.post(`/ptm/upload`, formData);
+//       setResults(res.data.results || []);
+//     } catch (err) {
+//       alert("❌ Error uploading file");
+//       console.error(err);
+//     } finally {
+//       setUploading(false);
+//     }
+//   };
+
+//   return (
+//     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4 ">
+//       <Breadcrumb />
+//       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full text-center">
+//         <h2 className="text-2xl font-semibold text-slate-800 mb-2">
+//           📤 PTM Report Uploader
+//         </h2>
+//         <p className="text-slate-500 text-sm mb-4">
+//           Supported formats: <code>.xlsx</code>, <code>.csv</code>
+//         </p>
+
+//         <form
+//           onSubmit={handleSubmit}
+//           className="flex flex-col items-center gap-4"
+//         >
+//           <label
+//             htmlFor="ptmDate"
+//             className="w-full flex justify-center text-sm text-slate-700 font-medium self-start"
+//           >
+//             <div className="w-1/2 flex justify-start">Select PTM Date:</div>
+//           </label>
+//           <input
+//             id="ptmDate"
+//             type="date"
+//             value={ptmDate}
+//             onChange={(e) => setPtmDate(e.target.value)}
+//             required
+//             className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm"
+//           />
+
+//           <input
+//             type="file"
+//             accept=".xlsx,.csv"
+//             onChange={handleFileChange}
+//             className="border border-slate-300 rounded-md px-3 py-2 w-full max-w-sm text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+//           />
+
+//           <button
+//             type="submit"
+//             disabled={uploading || hasErrors}
+//             className={`px-5 py-2 text-white rounded-md font-medium transition ${
+//               uploading || hasErrors
+//                 ? "bg-blue-300 cursor-not-allowed"
+//                 : "bg-blue-600 hover:bg-blue-700"
+//             }`}
+//           >
+//             {uploading ? "Uploading..." : "Generate Reports"}
+//           </button>
+//         </form>
+
+//         {/* Warnings */}
+//         {warnings.length > 0 && (
+//           <div className="mt-6 bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded text-left">
+//             <h4 className="font-semibold mb-2">⚠️ Validation Warnings:</h4>
+//             <ul className="list-disc pl-5 space-y-1 text-sm">
+//               {warnings.map((warn, idx) => (
+//                 <li key={idx}>{warn}</li>
+//               ))}
+//             </ul>
+//           </div>
+//         )}
+
+//         {/* Data preview */}
+//         {dataPreview.length > 0 && (
+//           <div className="mt-8 overflow-auto max-h-[400px] border border-gray-300 rounded">
+//             <table className="min-w-full text-left text-xs">
+//               <thead>
+//                 <tr>
+//                   {headers.map((header, i) => (
+//                     <th key={i} className="bg-gray-100 px-2 py-1 border">
+//                       {header}
+//                     </th>
+//                   ))}
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {dataPreview.map((row, i) => (
+//                   <tr key={i}>
+//                     {headers.map((header, j) => (
+//                       <td
+//                         key={j}
+//                         className={`border px-2 py-1 ${
+//                           isCellInvalid(i, header)
+//                             ? "bg-red-100 text-red-600"
+//                             : ""
+//                         }`}
+//                       >
+//                         {row[header]}
+//                       </td>
+//                     ))}
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         )}
+
+//         {/* Upload Results */}
+//         {results?.length > 0 && (
+//           <div className="mt-8 text-left">
+//             <h3 className="text-lg font-medium text-slate-700 mb-4">
+//               📄 Generated Reports
+//             </h3>
+//             <ul className="space-y-2 list-disc pl-5 text-slate-600">
+//               {results.map((r, index) => (
+//                 <li key={index}>
+//                   <strong>{r.name}</strong> –{" "}
+//                   <a
+//                     href={r.cloudinaryUrl.secure_url}
+//                     target="_blank"
+//                     rel="noreferrer"
+//                     className="text-blue-600 hover:underline"
+//                   >
+//                     Download
+//                   </a>
+//                 </li>
+//               ))}
+//             </ul>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default UploadForm;
