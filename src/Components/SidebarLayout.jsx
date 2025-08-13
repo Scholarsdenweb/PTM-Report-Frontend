@@ -11,9 +11,9 @@ const SidebarLayout = ({ children }) => {
   const isReportsActive = location.pathname.startsWith("/reports");
 
   useEffect(() => {
-    const roleFromCookie = getCookie("role");
-    console.log("rolrFromCookie", roleFromCookie )
-    setRole(roleFromCookie);
+
+    setRole(localStorage.getItem("role"));
+
   }, []);
 
   const handleLogout = async () => {
