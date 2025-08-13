@@ -26,13 +26,21 @@ const SidebarLayout = ({ children }) => {
     }
   };
 
+  useEffect(() => {
+    console.log("role form sidebar", role);
+  }, [role]);
+
   // Define role-based menu items
   const menuItems = [
-    ...(role === "Admin" 
-      ? [{ to: "/uploadForm", label: "📤 Upload" }]
-      : []),
+    ...(role === "Admin" ? [{ to: "/uploadForm", label: "📤 Upload" }] : []),
     ...(role === "Admin" || role === "Faculty"
-      ? [{ to: role==="Admin" ? "/reports" : "/facultyDashboard", label: "📑 Reports", isActive: isReportsActive }]
+      ? [
+          {
+            to: role === "Admin" ? "/reports" : "/facultyDashboard",
+            label: "📑 Reports",
+            isActive: isReportsActive,
+          },
+        ]
       : []),
     ...(role === "Admin"
       ? [{ to: "/uploadPhotos", label: "📷 Upload Photos" }]
