@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import axios from "../../api/axios";
 import { getCookie } from "../../utils/getCookie"; // Adjust import as needed
 
@@ -25,6 +25,18 @@ const SidebarLayout = ({ children }) => {
       setIsLoggingOut(false);
     }
   };
+
+  // const navigate = useNavigate();
+// 
+//   const handleLogout = async () => {
+//   // Remove both cookies
+//   document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; ";
+//   document.cookie = "role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None;";
+
+//   // Redirect
+//   navigate("/");
+// };
+
 
   useEffect(() => {
     console.log("role form sidebar", role);
