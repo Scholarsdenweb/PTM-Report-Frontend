@@ -13,16 +13,15 @@ const LoginForm = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        "/auth/login",
-        {
-          email: emailOrUsername,
-          password,
-        },
-        
-      );
+      const res = await axios.post("/auth/login", {
+        email: emailOrUsername,
+        password,
+      });
 
       const user = res.data.user;
+      localStorage.setItem("role", user.role);
+
+      console.log("user from handleLogin", user);
       onLogin(user); // Notify parent that login was successful
     } catch (err) {
       console.log("Login error:", err);

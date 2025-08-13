@@ -48,7 +48,9 @@ function App() {
     );
   }
 
-  const role = getCookie("role");
+  // const role = getCookie("role");
+  const role = localStorage.getItem("role");
+
   const tokenFormCookie = getCookie("token");
   console.log("role", role);
   console.log("tokenFormCookie", tokenFormCookie);
