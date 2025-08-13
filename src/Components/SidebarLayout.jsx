@@ -12,6 +12,7 @@ const SidebarLayout = ({ children }) => {
 
   useEffect(() => {
     const roleFromCookie = getCookie("role");
+    console.log("rolrFromCookie", roleFromCookie )
     setRole(roleFromCookie);
   }, []);
 
