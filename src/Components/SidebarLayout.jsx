@@ -146,7 +146,7 @@ const SidebarLayout = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 bg-white max-w-screen  min-h-screen ml-0  transition-all">
+      <main className="flex-1 p-4 md:p-8 bg-white max-w-screen  max-h-screen overflow-auto ml-0  transition-all">
         {children || <p className="text-gray-500">No content available.</p>}
       </main>
 

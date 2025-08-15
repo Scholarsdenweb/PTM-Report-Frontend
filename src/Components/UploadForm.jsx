@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
 
-const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Str"];
+const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Strength"];
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -199,7 +199,7 @@ const validateAndPreview = (data) => {
   };
 
   return (
-    <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
+    <div className="flex flex-col justify-center max-w-6xl p-6   mx-auto gap-4">
       <Breadcrumb />
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full text-center">
         <h2 className="text-2xl font-semibold text-slate-800 mb-2">
