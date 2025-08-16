@@ -62,6 +62,7 @@ const AdminReportViewer = () => {
         signal: controller.signal,
       })
       .then((res) => {
+        console.log("res of reports", res);
         setReports(res.data.reports);
         setTotalPages(res.data.totalPages);
       })
