@@ -65,6 +65,8 @@ const SidebarLayout = ({ children }) => {
     ...(role === "Admin"
       ? [{ to: "/uploadPhotos", label: "📷 Upload Photos" }]
       : []),
+      ...(role === "Admin" ? [{ to: "/reGenerate", label: "📤 Regenerate PTM Report" }] : []),
+
   ];
 
   return (
@@ -146,7 +148,7 @@ const SidebarLayout = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 bg-white max-w-screen  min-h-screen ml-0  transition-all">
+      <main className="flex-1 p-4 md:p-8 bg-white max-w-screen overflow-auto min-h-screen ml-0  transition-all">
         {children || <p className="text-gray-500">No content available.</p>}
       </main>
 

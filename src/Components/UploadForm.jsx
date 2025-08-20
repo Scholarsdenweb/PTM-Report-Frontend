@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
 
-const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Str"];
+const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Strength"];
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);

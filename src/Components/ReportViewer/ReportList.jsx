@@ -13,17 +13,15 @@ const ReportList = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
 
+  const [popup, setPopup] = useState(false);
 
   const handleDownloadAll = async () => {
     try {
       setDownloading(true);
-      const response = await axios.get(
-        `/batches/reports/download`,
-        {
-          params: { batch: batchId, date },
-          responseType: "blob", // Important for downloading
-        }
-      );
+      const response = await axios.get(`/batches/reports/download`, {
+        params: { batch: batchId, date },
+        responseType: "blob", // Important for downloading
+      });
 
       const blob = new Blob([response.data], { type: "application/zip" });
       const link = document.createElement("a");
@@ -31,14 +29,20 @@ const ReportList = ({
       link.download = `PTM_Reports_${batchId}_${date}.zip`;
       link.click();
     } catch (err) {
-
       console.log(" from downloading files", err);
       alert(
         "Download failed. Make sure data exists for selected batch and date."
       );
-    }finally{
+    } finally {
       setDownloading(false);
     }
+  };
+
+  const handleEditClick = async (rollNo) => {
+    setPopup(true);
+    const fetchData = await axios.post("/fetchDataByRollNo", rollNo  );
+
+    console.log("FetchData", fetchData);
   };
 
   return (
@@ -106,25 +110,28 @@ const ReportList = ({
               </div>
 
               {/* Report Details */}
-              <div className="p-4 space-y-2">
-                <div className="text-lg font-semibold text-gray-800">
-                  {report.student.name}
+              <div className="flex justify-between p-3">
+                <div className="p-4 space-y-2">
+                  <div className="text-lg font-semibold text-gray-800">
+                    {report.student.name}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Roll No: {report.student.rollNo}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Report Date:{" "}
+                    {new Date(report.reportDate).toLocaleDateString()}
+                  </div>
+                  <a
+                    href={report.secure_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-sm text-blue-600 hover:underline"
+                  >
+                    🔗 Open Full PDF
+                  </a>
                 </div>
-                <div className="text-sm text-gray-600">
-                  Roll No: {report.student.rollNo}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Report Date:{" "}
-                  {new Date(report.reportDate).toLocaleDateString()}
-                </div>
-                <a
-                  href={report.secure_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 text-sm text-blue-600 hover:underline"
-                >
-                  🔗 Open Full PDF
-                </a>
+                <div onClick={handleEditClick}>Edit</div>
               </div>
             </div>
           ))}

@@ -15,6 +15,7 @@ import AdminReportViewer from "./Components/AdminReportViewer";
 import BulkPhotoUploader from "./Components/BulkPhotoUploader";
 import { getCookie } from "../utils/getCookie";
 import FacultyDashboard from "./Components/FacultyDashboard";
+import RegenerateReport from "./Components/ReportViewer/RegenerateReport";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -160,6 +161,14 @@ function App() {
           element={
             <SidebarLayout>
               <AdminReportViewer />
+            </SidebarLayout>
+          }
+        />
+        <Route
+          path="/reGenerate"
+          element={
+            <SidebarLayout>
+              <RegenerateReport />
             </SidebarLayout>
           }
         />
