@@ -70,7 +70,7 @@ const SidebarLayout = ({ children }) => {
   ];
 
   return (
-    <div className="relative flex min-h-screen min-w-screen bg-slate-50 font-sans">
+    <div className="relative flex h-screen min-w-screen bg-slate-50 font-sans">
       {/* Toggle Menu Button (only on mobile when sidebar is closed) */}
       {!isSidebarOpen && (
         <button

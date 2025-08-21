@@ -73,84 +73,95 @@ const UploadForm = () => {
       reader.readAsArrayBuffer(selectedFile);
     }
   };
-const normalize = (str) => str?.toString().toLowerCase().replace(/[^a-z0-9]/gi, "");
+  const normalize = (str) =>
+    str
+      ?.toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/gi, "");
 
-const validateAndPreview = (data) => {
-  const requiredIssues = new Set();
-  const optionalWarnings = new Set();
-  const invalids = [];
+  const validateAndPreview = (data) => {
+    const requiredIssues = new Set();
+    const optionalWarnings = new Set();
+    const invalids = [];
 
-  if (!data || !data.length) {
-    requiredIssues.add("❌ No data found in file.");
-    setWarnings([...requiredIssues]);
-    setHasErrors(true);
-    return;
-  }
-
-  const rawHeaders = Object.keys(data[0]);
-  const normalizedHeaders = rawHeaders.map(normalize);
-
-  // Map required columns to actual header names in the file
-  const headerMap = {};
-  REQUIRED_COLUMNS.forEach((reqCol) => {
-    const normalizedReq = normalize(reqCol);
-    const index = normalizedHeaders.findIndex((h) => h === normalizedReq);
-    if (index !== -1) {
-      headerMap[reqCol] = rawHeaders[index]; // e.g., "ROLL NO" => "Roll No."
+    if (!data || !data.length) {
+      requiredIssues.add("❌ No data found in file.");
+      setWarnings([...requiredIssues]);
+      setHasErrors(true);
+      return;
     }
-  });
 
-  // Check for missing headers
-  const missing = REQUIRED_COLUMNS.filter((col) => !headerMap[col]);
-  if (missing.length) {
-    requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
-  }
+    const rawHeaders = Object.keys(data[0]);
+    const normalizedHeaders = rawHeaders.map(normalize);
 
-  const seenRollNos = new Set();
+    // Map required columns to actual header names in the file
+    const headerMap = {};
+    REQUIRED_COLUMNS.forEach((reqCol) => {
+      const normalizedReq = normalize(reqCol);
+      const index = normalizedHeaders.findIndex((h) => h === normalizedReq);
+      if (index !== -1) {
+        headerMap[reqCol] = rawHeaders[index]; // e.g., "ROLL NO" => "Roll No."
+      }
+    });
 
-  data.forEach((row, rowIndex) => {
-    const rollNoKey = headerMap["ROLL NO"];
-    const rollNo = row[rollNoKey];
+    // Check for missing headers
+    const missing = REQUIRED_COLUMNS.filter((col) => !headerMap[col]);
+    if (missing.length) {
+      requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
+    }
 
-    rawHeaders.forEach((col) => {
-      const value = row[col];
-      const isRequired = Object.values(headerMap).includes(col);
+    const seenRollNos = new Set();
 
-      if (!value || value.toString().trim() === "") {
-        invalids.push({ row: rowIndex, field: col });
+    data.forEach((row, rowIndex) => {
+      const rollNoKey = headerMap["ROLL NO"];
+      const rollNo = row[rollNoKey];
 
-        const message = isRequired
-          ? `Row ${rowIndex + 1}: "${col}" is required.`
-          : `Row ${rowIndex + 1}: "${col}" is empty.`;
 
-        if (isRequired) {
-          requiredIssues.add(message);
+
+  
+      rawHeaders.forEach((col) => {
+        const value = row[col];
+        const isRequired = Object.values(headerMap).includes(col);
+
+
+        console.log(" row: , field: ", rowIndex, col, value);
+
+        if (!value || value.toString().trim() === "") {
+          invalids.push({ row: rowIndex, field: col });
+
+          const message = isRequired
+            ? `Row ${rowIndex + 1}: "${col}" is required.`
+            : `Row ${rowIndex + 1}: "${col}" is empty.`;
+
+          if (isRequired) {
+            requiredIssues.add(message);
+          } else {
+            optionalWarnings.add(message);
+          }
+        }
+      });
+
+
+
+      // Duplicate Roll No. check
+      if (rollNoKey) {
+        if (seenRollNos.has(rollNo)) {
+          requiredIssues.add(
+            `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
+          );
         } else {
-          optionalWarnings.add(message);
+          seenRollNos.add(rollNo);
         }
       }
     });
 
-    // Duplicate Roll No. check
-    if (rollNoKey) {
-      if (seenRollNos.has(rollNo)) {
-        requiredIssues.add(
-          `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
-        );
-      } else {
-        seenRollNos.add(rollNo);
-      }
-    }
-  });
-
-  setInvalidCells(invalids);
-  setWarnings([...requiredIssues, ...optionalWarnings]);
-  setDataPreview(data.slice(0, 100));
-  setHeaders(rawHeaders);
-  setHasErrors(requiredIssues.size > 0);
-  setHasOptionalWarnings(optionalWarnings.size > 0);
-};
-
+    setInvalidCells(invalids);
+    setWarnings([...requiredIssues, ...optionalWarnings]);
+    setDataPreview(data.slice(0, 100));
+    setHeaders(rawHeaders);
+    setHasErrors(requiredIssues.size > 0);
+    setHasOptionalWarnings(optionalWarnings.size > 0);
+  };
 
   const isCellInvalid = (rowIndex, header) =>
     invalidCells.some((cell) => cell.row === rowIndex && cell.field === header);
@@ -199,7 +210,7 @@ const validateAndPreview = (data) => {
   };
 
   return (
-    <div className="flex flex-col justify-center max-w-6xl p-6   mx-auto gap-4">
+    <div className="flex flex-col justify-center max-w-6xl p-6 max-h-11/12 overflow-auto   mx-auto gap-4">
       <Breadcrumb />
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full text-center">
         <h2 className="text-2xl font-semibold text-slate-800 mb-2">

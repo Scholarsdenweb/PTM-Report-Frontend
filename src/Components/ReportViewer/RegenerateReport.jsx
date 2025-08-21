@@ -61,7 +61,7 @@ const RegenerateReport = () => {
           return;
         }
 
-        // validateAndPreview(data);
+        validateAndPreview(data);
 
 
       } catch (err) {
@@ -190,6 +190,7 @@ const validateAndPreview = (data) => {
     const formData = new FormData();
     formData.append("csvFile", file);
     formData.append("ptmDate", ptmDate);
+    formData.append("type", "regenerate");
 
     try {
       setUploading(true);
