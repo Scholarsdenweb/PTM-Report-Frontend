@@ -196,6 +196,7 @@ const UploadForm = () => {
     const formData = new FormData();
     formData.append("csvFile", file);
     formData.append("ptmDate", ptmDate);
+    formData.append("type", "generate");
 
     try {
       setUploading(true);
