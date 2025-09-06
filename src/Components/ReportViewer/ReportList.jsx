@@ -174,10 +174,6 @@
 
 // export default ReportList;
 
-
-
-
-
 import React, { useState, useEffect } from "react";
 import axios from "../../../api/axios";
 
@@ -195,7 +191,11 @@ const ReportList = ({
   const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
 
+
+  const [arrayForMessage, setArrayForMessage] = useState("");
+
   const [popup, setPopup] = useState(false);
+
 
   const handleDownloadAll = async () => {
     try {
@@ -222,9 +222,39 @@ const ReportList = ({
 
   const handleEditClick = async (rollNo) => {
     setPopup(true);
-    const fetchData = await axios.post("/fetchDataByRollNo", rollNo  );
+    const fetchData = await axios.post("/fetchDataByRollNo", rollNo);
 
     console.log("FetchData", fetchData);
+  };
+
+  useEffect(() => {
+    console.log("reports from useEffect ", reports);
+
+    const data = reports.map((data)=>{
+     data.student._id
+    })
+
+
+    addUserDetails(data);
+
+    reports.map((data) => console.log("data from useEffect reportList", data))
+    
+  }, []);
+
+
+
+  const addUserDetails = (data) =>{
+    setArrayForMessage((prev)=>[...prev, data])
+  }
+  const handleSendMessagesOnWhatsapp = async () => {
+    console.log("handleSendMessageOnWhatsapp");
+
+
+
+
+    // const arrayForMEssage = "";
+    const response = await axios.post("/ptm/send-whatsapp-message", arrayForMessage)
+    console.log("responss", response);
   };
 
   return (
@@ -261,6 +291,14 @@ const ReportList = ({
         >
           {downloading ? "Downloading..." : "⬇ Download All (.zip)"}
         </button>
+
+        <button
+          disabled={downloading}
+          onClick={handleSendMessagesOnWhatsapp}
+          className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded shadow disabled:opacity-50 transition"
+        >
+          {downloading ? "Sending..." : "⬇ Send Report on Whatsapp"}
+        </button>
       </div>
 
       {/* Reports */}
@@ -279,7 +317,11 @@ const ReportList = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
+          {reports.map((report) =>
+// console.log("reports from map ", reports)
+
+// return reports;
+           (
             <div
               key={report._id}
               className="bg-white border rounded-lg shadow hover:shadow-lg transition overflow-hidden flex flex-col"
@@ -315,10 +357,12 @@ const ReportList = ({
                     🔗 Open Full PDF
                   </a>
                 </div>
-                <div onClick={handleEditClick}>Edit</div>
+                {/* <div onClick={handleEditClick}>Edit</div> */}
               </div>
             </div>
-          ))}
+          )
+          
+          )}
         </div>
       )}
 
