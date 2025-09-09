@@ -16,6 +16,7 @@ import BulkPhotoUploader from "./Components/BulkPhotoUploader";
 import { getCookie } from "../utils/getCookie";
 import FacultyDashboard from "./Components/FacultyDashboard";
 import RegenerateReport from "./Components/ReportViewer/RegenerateReport";
+import StudentReport from "./Components/ReportViewer/StudentReport";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -96,10 +97,7 @@ function App() {
           path="/facultyDashboard"
           element={
             <SidebarLayout>
-          
-
               <AdminReportViewer />
-        
             </SidebarLayout>
           }
         />
@@ -128,7 +126,17 @@ function App() {
 
         <Route
           path="*"
-          element={<Navigate to={isLoggedIn ? role==="Admin" ? "/uploadForm" : "/reports" : "/login"} />}
+          element={
+            <Navigate
+              to={
+                isLoggedIn
+                  ? role === "Admin"
+                    ? "/uploadForm"
+                    : "/reports"
+                  : "/login"
+              }
+            />
+          }
         />
 
         <Route
@@ -169,6 +177,15 @@ function App() {
           element={
             <SidebarLayout>
               <RegenerateReport />
+            </SidebarLayout>
+          }
+        />
+
+        <Route
+          path="/studentReport"
+          element={
+            <SidebarLayout>
+              <StudentReport />
             </SidebarLayout>
           }
         />

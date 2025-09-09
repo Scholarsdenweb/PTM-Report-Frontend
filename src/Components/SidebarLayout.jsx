@@ -66,6 +66,7 @@ const SidebarLayout = ({ children }) => {
       ? [{ to: "/uploadPhotos", label: "📷 Upload Photos" }]
       : []),
       ...(role === "Admin" ? [{ to: "/reGenerate", label: "📤 Regenerate PTM Report" }] : []),
+      ...(role === "Admin" ? [{ to: "/studentReport", label: "📤 Student PTM Report" }] : []),
 
   ];
 
