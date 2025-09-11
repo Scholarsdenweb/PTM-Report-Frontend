@@ -17,6 +17,8 @@ import { getCookie } from "../utils/getCookie";
 import FacultyDashboard from "./Components/FacultyDashboard";
 import RegenerateReport from "./Components/ReportViewer/RegenerateReport";
 import StudentReport from "./Components/ReportViewer/StudentReport";
+import BatchWiseStudentList from "./Components/ReportViewer/BatchwiseStudentList";
+import ShowAllResultOfStudent from "./Components/ReportViewer/ShowAllResultOfStudent";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -172,6 +174,24 @@ function App() {
             </SidebarLayout>
           }
         />
+
+        <Route
+          path="/students/:batchId"
+          element={
+            <SidebarLayout>
+              <BatchWiseStudentList />
+            </SidebarLayout>
+          }
+        />
+        <Route
+          path="/students/:batchId/:rollNo"
+          element={
+            <SidebarLayout>
+              <ShowAllResultOfStudent />
+            </SidebarLayout>
+          }
+        />
+
         <Route
           path="/reGenerate"
           element={
@@ -182,7 +202,7 @@ function App() {
         />
 
         <Route
-          path="/studentReport"
+          path="/students"
           element={
             <SidebarLayout>
               <StudentReport />

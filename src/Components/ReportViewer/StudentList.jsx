@@ -1,19 +1,21 @@
 import React from "react";
 
-const BatchList = ({ batches, selectedBatch, onSelect }) => {
-  console.log("Batches from the batchList ", batches);
+const StudentList = ({ students, selectedStudent, onSelect }) => {
+  console.log("Students from studentBatch", students);
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-3 text-gray-800">Select Batch</h3>
+      <h3 className="text-lg font-semibold mb-3 text-gray-800">
+        Select Student
+      </h3>
 
       <div className="flex flex-wrap gap-3  ">
-        {batches?.map((batch) => {
-          const isSelected = batch === selectedBatch;
+        {students?.map((student) => {
+          const isSelected = student === selectedStudent;
 
           return (
             <button
-              key={batch}
-              onClick={() => onSelect(batch)}
+              key={student._id}
+              onClick={() => onSelect(student)}
               className={` w-1/4 justify-center items-center rounded-lg border text-sm font-medium shadow-sm transition-all duration-200
                 ${
                   isSelected
@@ -21,7 +23,7 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
                     : "bg-white text-gray-800 hover:bg-blue-50 hover:border-blue-400"
                 }`}
             >
-              {batch}
+              {student.name}
             </button>
           );
         })}
@@ -30,4 +32,4 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
   );
 };
 
-export default BatchList;
+export default StudentList;
