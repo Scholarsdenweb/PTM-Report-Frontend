@@ -488,9 +488,11 @@ const ReportList = ({
   page,
   setPage,
   totalPages,
-  batchId,
-  date,
-  fetchReports,
+  // batchId,
+  // date,
+  params,
+
+  // fetchReports,
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -498,17 +500,19 @@ const ReportList = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [sending, setSending] = useState(false); // for WhatsApp sending loading
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        await fetchReports();
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [page, filter, fetchReports]);
+  console.log("reports from reportList", reports);
+
+  // useEffect(() => {
+  //   const loadData = async () => {
+  //     setLoading(true);
+  //     try {
+  //       await fetchReports();
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   loadData();
+  // }, [page, filter, fetchReports]);
 
   useEffect(() => {
     const ids = reports.map((r) => r.student._id);
@@ -524,16 +528,34 @@ const ReportList = ({
     try {
       setDownloading(true);
       const response = await axios.get(`/batches/admin/reports/download`, {
-        params: { batch: batchId, date },
+        params: params,
         responseType: "blob",
       });
 
       console.log("Response from handleDownloadAll", response);
+      // Build dynamic filename based on available params
+      let fileName = "PTM_Reports";
+
+      if (params?.batchId) {
+        fileName += `_Batch_${params.batchId}`;
+      }
+
+      if (params?.rollNo) {
+        fileName += `_RollNo_${params.rollNo}`;
+      }
+
+      if (params?.date) {
+        fileName += `_Date_${params.date}`;
+      }
+
+      fileName += `.zip`;
 
       const blob = new Blob([response.data], { type: "application/zip" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `PTM_Reports_${batchId}_${date}.zip`;
+      // link.download = `PTM_Reports_${batchId}_${date}.zip`;
+      link.download = fileName;
+
       link.click();
 
       toast.success("Download started!");
@@ -550,7 +572,7 @@ const ReportList = ({
       setSending(true);
       const response = await axios.post("/ptm/send-whatsapp-message", {
         reportIds,
-        date,
+        params
       });
 
       console.log("WhatsApp send response:", response.data);
@@ -568,28 +590,35 @@ const ReportList = ({
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
 
       {/* Top Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div
+        className={`flex flex-col lg:flex-row lg:items-center ${
+          filter ? "lg:justify-between" : "lg:justify-end"
+        } gap-4`}
+      >
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <input
-            type="text"
-            placeholder="Filter by Name"
-            value={filter?.name}
-            onChange={(e) =>
-              setFilter((prev) => ({ ...prev, name: e.target.value }))
-            }
-            className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64"
-          />
-          <input
-            type="text"
-            placeholder="Filter by Roll No"
-            value={filter?.rollNo}
-            onChange={(e) =>
-              setFilter((prev) => ({ ...prev, rollNo: e.target.value }))
-            }
-            className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64"
-          />
-        </div>
+
+        {filter && (
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <input
+              type="text"
+              placeholder="Filter by Name"
+              value={filter?.name}
+              onChange={(e) =>
+                setFilter((prev) => ({ ...prev, name: e.target.value }))
+              }
+              className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64"
+            />
+            <input
+              type="text"
+              placeholder="Filter by Roll No"
+              value={filter?.rollNo}
+              onChange={(e) =>
+                setFilter((prev) => ({ ...prev, rollNo: e.target.value }))
+              }
+              className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64"
+            />
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="flex gap-2">
@@ -673,27 +702,29 @@ const ReportList = ({
       )}
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t">
-        <button
-          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          disabled={page === 1 || loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-        >
-          ⬅ Previous
-        </button>
+      {totalPages && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t">
+          <button
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={page === 1 || loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            ⬅ Previous
+          </button>
 
-        <span className="text-sm text-gray-700">
-          Page {page} of {totalPages}
-        </span>
+          <span className="text-sm text-gray-700">
+            Page {page} of {totalPages}
+          </span>
 
-        <button
-          onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-          disabled={page === totalPages || loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-        >
-          Next ➡
-        </button>
-      </div>
+          <button
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={page === totalPages || loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            Next ➡
+          </button>
+        </div>
+      )}
 
       {/* Confirmation Modal with backdrop blur */}
       {showConfirmModal && (

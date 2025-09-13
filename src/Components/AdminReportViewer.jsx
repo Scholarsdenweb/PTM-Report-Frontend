@@ -153,8 +153,9 @@ const AdminReportViewer = () => {
             page={currentPage}
             setPage={handlePageChange}
             totalPages={totalPages}
-            batchId={batchId}
-            date={date}
+            // batchId={batchId}
+            // date={date}
+            params={{date, batchId}}
           />
         </div>
       )}
