@@ -12,7 +12,7 @@ import BackButton from "./BackButton";
 
 const StudentReport = () => {
   const [searchRollNo, setSearchRollNo] = useState("");
-  const { batchId, date } = useParams();
+  const { batchId, rollNo } = useParams();
 
   const [loading, setLoading] = useState("");
 
@@ -28,8 +28,13 @@ const StudentReport = () => {
 
   const role = getCookie("role");
 
+
+  
+
+  console.log("rollNo from handleBack button ", rollNo);
   const handleBack = () => {
-    if (date) navigate(`/reports/${batchId}`);
+    console.log("rollNo from handleBack button ", rollNo);
+    if (rollNo) navigate(`/reports/${batchId}`);
     else if (batchId) navigate(`/reports`);
   };
 
@@ -143,11 +148,13 @@ const StudentReport = () => {
         {role} Report Viewer
       </h2>
 
-      {(batchId || date) && (
+      {(batchId || rollNo) && (
         <div className="mb-4">
           <BackButton onClick={handleBack} />
         </div>
       )}
+
+      
 
       {/* Step 1: Batch Selection */}
       {!batchId && (

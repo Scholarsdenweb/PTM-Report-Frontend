@@ -119,6 +119,11 @@ const ShowAllResultOfStudent = () => {
       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
         {role} Report Viewer
       </h2>
+        {(batchId || rollNo) && (
+        <div className="mb-4">
+          <BackButton onClick={handleBack} />
+        </div>
+      )}
       {batchId && rollNo && (
         <div className="bg-white rounded-lg shadow p-4 sm:p-6 mt-4">
           <ReportList

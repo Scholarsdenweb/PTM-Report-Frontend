@@ -6,12 +6,15 @@ import Breadcrumb from "../../../utils/Breadcrumb";
 import Loading from "../../../utils/Loading";
 import { getCookie } from "../../../utils/getCookie";
 import BackButton from "./BackButton";
+import RollNoFilter from "../../../utils/Filters/RollNoFilter";
 
 const BatchWiseStudentList = () => {
   const { batchId } = useParams();
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [filterValue, setFilterValue] = useState();
 
   const navigate = useNavigate();
 
@@ -20,6 +23,43 @@ const BatchWiseStudentList = () => {
     console.log("Student from handleStudentSelect", student.rollNo);
     navigate(`/students/${batchId}/${student.rollNo}`);
   };
+
+  // const handleFilterValue = (data) => {
+  //   console.log("data from handleFilterValue ", data);
+
+  // };
+
+const handleFilterValue = async (rollNo) => {
+  setFilterValue(rollNo);
+
+  // Only fetch all if the input is empty and it wasn’t already empty
+  if (!rollNo || rollNo.trim() === "") {
+    if (filterValue !== "") {
+      await fetchStudentByBatch(); // only refetch all when clearing
+    }
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await axios.get("/students/search", {
+      params: {
+        batch: batchId,
+        rollNo: rollNo.trim(),
+      },
+    });
+
+    console.log("Filtered students:", response.data);
+    setStudents(response.data.students || []);
+  } catch (err) {
+    console.error("Error filtering students:", err);
+    setStudents([]); // clear on error
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const fetchStudentByBatch = async () => {
     const response = await axios.post("/students/student-by-batch", {
@@ -34,10 +74,12 @@ const BatchWiseStudentList = () => {
     if (batchId) navigate(`/students`);
   };
 
-  useEffect(() => {
-    console.log("batchId batchWiseStudentList", batchId);
+useEffect(() => {
+  if (batchId) {
     fetchStudentByBatch();
-  }, []);
+  }
+}, [batchId]); // ✅ only runs once when batchId changes
+
 
   const role = getCookie("role");
 
@@ -60,12 +102,21 @@ const BatchWiseStudentList = () => {
       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
         {role} Report Viewer
       </h2>
+      <div className="flex justify-between items-start">
+        {batchId && (
+          <div className="mb-4">
+            <BackButton onClick={handleBack} />
+          </div>
+        )}
 
-      {batchId && (
-        <div className="mb-4">
-          <BackButton onClick={handleBack} />
-        </div>
-      )}
+        {/* Filter By RollNo */}
+
+        <RollNoFilter
+          value={filterValue}
+          onChange={handleFilterValue}
+          debounceDelay={300}
+        />
+      </div>
 
       {/* Step 1: Batch Selection */}
       {batchId && (
