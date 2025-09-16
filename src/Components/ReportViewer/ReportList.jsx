@@ -124,7 +124,7 @@ const ReportList = ({
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <input
               type="text"
-              placeholder="Filter by Name"
+              placeholder="Filter By Name"
               value={filter?.name}
               onChange={(e) =>
                 setFilter((prev) => ({ ...prev, name: e.target.value }))
@@ -133,7 +133,7 @@ const ReportList = ({
             />
             <input
               type="text"
-              placeholder="Filter by Roll No"
+              placeholder="Filter By Roll No"
               value={filter?.rollNo}
               onChange={(e) =>
                 setFilter((prev) => ({ ...prev, rollNo: e.target.value }))

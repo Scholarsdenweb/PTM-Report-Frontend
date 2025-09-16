@@ -1,9 +1,8 @@
-import React from 'react'
+import React from "react";
 
 const BatchFilter = () => {
-  return (
-    <div>BatchFilter</div>
-  )
-}
+  console.log("testdata frin batchFilter");
+  return <div>BatchFilter</div>;
+};
 
-export default BatchFilter
+export default BatchFilter;

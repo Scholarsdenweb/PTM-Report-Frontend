@@ -24,8 +24,8 @@ const RollNoFilter = ({
 
   return (
     <div className="w-full sm:w-64">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Filter by Roll No
+      <label className="block text-sm font-bold  text-gray-700 mb-1">
+        Search By Roll No
       </label>
       <input
         type="text"
