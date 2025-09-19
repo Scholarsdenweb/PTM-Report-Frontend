@@ -8,6 +8,8 @@ import BackButton from "./ReportViewer/BackButton";
 import Loading from "../../utils/Loading";
 import { getCookie } from "../../utils/getCookie";
 import Breadcrumb from "../../utils/Breadcrumb";
+import PdfEditor from "./PdfAnnotator";
+import PdfAnnotator from "./PdfAnnotator";
 
 const AdminReportViewer = () => {
   const { batchId, date } = useParams();
@@ -103,6 +105,16 @@ const AdminReportViewer = () => {
     setSearchParams({ page: 1 });
   };
 
+
+
+  const student = {
+    name: "Aakarshi Agarwal",
+    rollNo: "2024110009",
+    originalPdfUrl:
+      "./assets/testPdf.pdf"
+  };
+
+
   const role = getCookie("role");
 
   return (
@@ -118,6 +130,12 @@ const AdminReportViewer = () => {
       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
         {role} Report Viewer
       </h2>
+
+
+      {/* <PdfAnnotator student={student}   onSaveSuccess={() => {
+          console.log("Edited PDF URL:");
+          // setEditedUrl(url);
+        }} /> */}
 
       {(batchId || date) && (
         <div className="mb-4">
