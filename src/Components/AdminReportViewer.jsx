@@ -107,12 +107,12 @@ const AdminReportViewer = () => {
 
 
 
-  const student = {
-    name: "Aakarshi Agarwal",
-    rollNo: "2024110009",
-    originalPdfUrl:
-      "./assets/testPdf.pdf"
-  };
+  // const student = {
+  //   name: "Aakarshi Agarwal",
+  //   rollNo: "2024110009",
+  //   originalPdfUrl:
+  //     "./assets/testPdf.pdf"
+  // };
 
 
   const role = getCookie("role");

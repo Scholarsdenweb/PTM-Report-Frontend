@@ -6,7 +6,6 @@ import {
   Navigate,
 } from "react-router-dom";
 import Loading from "../utils/Loading";
-
 import UploadForm from "./Components/UploadForm";
 import LoginForm from "./Components/LoginForm";
 import SidebarLayout from "./Components/SidebarLayout";
@@ -19,6 +18,14 @@ import RegenerateReport from "./Components/ReportViewer/RegenerateReport";
 import StudentReport from "./Components/ReportViewer/StudentReport";
 import BatchWiseStudentList from "./Components/ReportViewer/BatchwiseStudentList";
 import ShowAllResultOfStudent from "./Components/ReportViewer/ShowAllResultOfStudent";
+import SendWhatsappMessage from "./Components/SendWhatsappMessage";
+
+// NEW: Protected route wrapper
+const ProtectedRoute = ({ isLoggedIn, userRole, allowedRoles, children }) => {
+  if (!isLoggedIn) return <Navigate to="/login" />;
+  if (!allowedRoles.includes(userRole)) return <Navigate to="/reports" />;
+  return children;
+};
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
@@ -27,22 +34,17 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.get("/auth/me"); // gets user from cookie
-        console.log("res from chechAuth", res);
+        const res = await axios.get("/auth/me");
         setUser(res.data);
         setIsLoggedIn(true);
       } catch (err) {
-        console.log("error", err);
         setIsLoggedIn(false);
       }
     };
-
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    console.log("isLoggedIn", isLoggedIn);
-  }, [isLoggedIn]);
+  const role = localStorage.getItem("role");
 
   if (isLoggedIn === null) {
     return (
@@ -52,16 +54,10 @@ function App() {
     );
   }
 
-  // const role = getCookie("role");
-  const role = localStorage.getItem("role");
-
-  const tokenFormCookie = getCookie("token");
-  console.log("role", role);
-  console.log("tokenFormCookie", tokenFormCookie);
-
   return (
     <Router>
       <Routes>
+        {/* Login */}
         <Route
           path="/login"
           element={
@@ -82,131 +78,217 @@ function App() {
           }
         />
 
+        {/* Admin-only routes */}
         <Route
           path="/uploadForm"
           element={
-            isLoggedIn ? (
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin"]}
+            >
               <SidebarLayout>
                 <UploadForm />
               </SidebarLayout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        <Route
-          path="/facultyDashboard"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/uploadPhotos"
           element={
-            isLoggedIn ? (
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin"]}
+            >
               <SidebarLayout>
                 <BulkPhotoUploader />
               </SidebarLayout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        <Route
-          path="/reports"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        />
-
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={
-                isLoggedIn
-                  ? role === "Admin"
-                    ? "/uploadForm"
-                    : "/reports"
-                  : "/login"
-              }
-            />
-          }
-        />
-
-        <Route
-          path="/reports"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        />
-        {/* <Route
-          path="/faculty/reports"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        /> */}
-
-        <Route
-          path="/reports/:batchId"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        />
-        <Route
-          path="/reports/:batchId/:date"
-          element={
-            <SidebarLayout>
-              <AdminReportViewer />
-            </SidebarLayout>
-          }
-        />
-
-        <Route
-          path="/students/:batchId"
-          element={
-            <SidebarLayout>
-              <BatchWiseStudentList />
-            </SidebarLayout>
-          }
-        />
-        <Route
-          path="/students/:batchId/:rollNo"
-          element={
-            <SidebarLayout>
-              <ShowAllResultOfStudent />
-            </SidebarLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/reGenerate"
           element={
-            <SidebarLayout>
-              <RegenerateReport />
-            </SidebarLayout>
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin"]}
+            >
+              <SidebarLayout>
+                <RegenerateReport />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Faculty-only route */}
+        <Route
+          path="/facultyDashboard"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Faculty"]}
+            >
+              <SidebarLayout>
+                <FacultyDashboard />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Shared routes (Admin + Faculty) */}
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <AdminReportViewer />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/:batchId"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <AdminReportViewer />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/:batchId/:date"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <AdminReportViewer />
+              </SidebarLayout>
+            </ProtectedRoute>
           }
         />
 
         <Route
           path="/students"
           element={
-            <SidebarLayout>
-              <StudentReport />
-            </SidebarLayout>
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <StudentReport />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/students/:batchId"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <BatchWiseStudentList />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/students/:batchId/:rollNo"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <ShowAllResultOfStudent />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/send-whatsapp-message"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <SendWhatsappMessage />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/send-whatsapp-message/:batchId"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <SendWhatsappMessage />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+                <Route
+          path="/send-whatsapp-message/:batchId/:date"
+          element={
+            <ProtectedRoute
+              isLoggedIn={isLoggedIn}
+              userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
+            >
+              <SidebarLayout>
+                <SendWhatsappMessage />
+              </SidebarLayout>
+            </ProtectedRoute>
+          }
+        />
+
+
+        {/* Catch-all redirect */}
+        <Route
+          path="*"
+          element={
+            isLoggedIn ? (
+              role === "Admin" ? (
+                <Navigate to="/uploadForm" />
+              ) : (
+                <Navigate to="/reports" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
       </Routes>

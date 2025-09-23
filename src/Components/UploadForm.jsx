@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+// import * as XLSX from "xlsx";
 import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
+
 
 const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Strength"];
 
@@ -17,6 +18,9 @@ const UploadForm = () => {
   const [dataPreview, setDataPreview] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [invalidCells, setInvalidCells] = useState([]);
+
+
+  
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -116,13 +120,9 @@ const UploadForm = () => {
       const rollNoKey = headerMap["ROLL NO"];
       const rollNo = row[rollNoKey];
 
-
-
-  
       rawHeaders.forEach((col) => {
         const value = row[col];
         const isRequired = Object.values(headerMap).includes(col);
-
 
         console.log(" row: , field: ", rowIndex, col, value);
 
@@ -140,8 +140,6 @@ const UploadForm = () => {
           }
         }
       });
-
-
 
       // Duplicate Roll No. check
       if (rollNoKey) {
@@ -338,17 +336,16 @@ const UploadForm = () => {
 
 export default UploadForm;
 
-// // src/components/UploadForm.jsx
-
 // import React, { useState } from "react";
+// import Papa from "papaparse";
+// import * as XLSX from "xlsx";
 // import axios from "../../api/axios";
 // import Breadcrumb from "../../utils/Breadcrumb";
-// import * as XLSX from "xlsx";
 
-// // 👇 Import the Web Worker using workerize-loader
-// // import FileWorker from "../workers/fileWorker.js";
+// // import fileValidation from "../../utils/fileValidation";
+// import { validateExcelHeaders } from "../../utils/fileValidation"; // adjust the path
 
-// const REQUIRED_COLUMNS = ["Name", "Roll No.", "Batch", "Str"]; // Adjust as needed
+// const REQUIRED_COLUMNS = ["Name", "ROLL NO", "Batch", "Strength"];
 
 // const UploadForm = () => {
 //   const [file, setFile] = useState(null);
@@ -361,112 +358,254 @@ export default UploadForm;
 //   const [dataPreview, setDataPreview] = useState([]);
 //   const [headers, setHeaders] = useState([]);
 //   const [invalidCells, setInvalidCells] = useState([]);
+//   const [missingColumns, setMissingColumns] = useState([]);
 
-// const handleFileChange = (e) => {
-//   const selectedFile = e.target.files[0];
-//   console.log("📁 File selected:", selectedFile);
+//   // Validate file type, extension, and size
+//   const validateFileBeforeParsing = (file) => {
+//     const allowedExtensions = ["csv", "xlsx"];
+//     const maxSize = 50 * 1024 * 1024; // 50MB
 
-//   setFile(selectedFile);
-//   setWarnings([]);
-//   setResults([]);
-//   setInvalidCells([]);
-//   setDataPreview([]);
+//     // validateExcelHeaders(file);
 
-//   if (!selectedFile) return;
+//     if (!file) {
+//       return { valid: false, message: "❌ No file selected." };
+//     }
 
-//   const ext = selectedFile.name.split(".").pop().toLowerCase();
-//   const fileType = ext === "csv" ? "csv" : ext === "xlsx" ? "xlsx" : null;
+//     const extension = file.name.split(".").pop().toLowerCase();
 
-//   if (!fileType) {
-//     setWarnings(["❌ Unsupported file format"]);
-//     return;
-//   }
+//     if (!allowedExtensions.includes(extension)) {
+//       return {
+//         valid: false,
+//         message: `❌ Unsupported file type. Only ${allowedExtensions.join(
+//           ", "
+//         )} are allowed.`,
+//       };
+//     }
 
-//   const reader = new FileReader();
+//     if (file.size > maxSize) {
+//       return {
+//         valid: false,
+//         message: "❌ File too large. Maximum allowed size is 50MB.",
+//       };
+//     }
 
-//   reader.onload = (evt) => {
-//     const fileContent = evt.target.result;
-
-//     // Create worker using native vite syntax
-//     const worker = new Worker(
-//       new URL("../workers/fileWorker.js", import.meta.url),
-//       { type: "module" }
-//     );
-
-//     console.log("🛠 Worker created, sending file content...");
-
-//     worker.postMessage({ fileContent, fileType });
-//           validateAndPreview(fileContent);
-
-//     // worker.onmessage = (event) => {
-//     //   const { data, error } = event.data;
-//     //   console.log("📨 Received from worker:", event.data);
-
-//     //   if (error) {
-//     //     setWarnings([error]);
-//     //     return;
-//     //   }
-
-//     //   worker.terminate(); // terminate worker when done
-//     // };
-
-//     worker.onerror = (err) => {
-//       console.error("❌ Worker error:", err);
-//       setWarnings(["❌ Worker crashed or failed to parse file."]);
-//       worker.terminate();
-//     };
+//     return { valid: true };
 //   };
 
-//   if (fileType === "xlsx") {
-//     reader.readAsBinaryString(selectedFile);
-//   } else {
-//     reader.readAsText(selectedFile);
-//   }
-// };
+//   // const handleFileChange = (e) => {
+//   //   const selectedFile = e.target.files[0];
+//   //   setFile(selectedFile);
+//   //   setWarnings([]);
+//   //   setResults([]);
+//   //   setInvalidCells([]);
+//   //   setDataPreview([]);
+//   //   setMissingColumns([]);
+
+//   //   // ✅ Validate before reading
+//   //   const validation = validateFileBeforeParsing(selectedFile);
+//   //   if (!validation.valid) {
+//   //     alert(validation.message);
+//   //     return;
+//   //   }
+
+//   //   if (!selectedFile) return;
+
+//   //   if (selectedFile.size > 50 * 1024 * 1024) {
+//   //     alert("❌ File too large. Please upload a file smaller than 50MB.");
+//   //     return;
+//   //   }
+
+//   //   const reader = new FileReader();
+//   //   const ext = selectedFile.name.split(".").pop().toLowerCase();
+
+//   //   reader.onload = async (event) => {
+//   //     setUploading(true);
+//   //     await new Promise((resolve) => setTimeout(resolve, 100));
+
+//   //     let data = [];
+
+//   //     try {
+//   //       if (ext === "csv") {
+//   //         const parsed = Papa.parse(event.target.result, {
+//   //           header: true,
+//   //           skipEmptyLines: true,
+//   //         });
+//   //         data = parsed.data;
+//   //       } else if (ext === "xlsx") {
+//   //         const workbook = XLSX.read(event.target.result, { type: "array" });
+//   //         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+//   //         data = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+//   //       } else {
+//   //         setWarnings(["❌ Unsupported file format"]);
+//   //         return;
+//   //       }
+
+//   //       validateAndPreview(data);
+//   //     } catch (err) {
+//   //       console.error("Parsing error:", err);
+//   //       alert("❌ Error reading the file. Please try again.");
+//   //     } finally {
+//   //       setUploading(false);
+//   //     }
+//   //   };
+
+//   //   if (ext === "csv") {
+//   //     reader.readAsText(selectedFile);
+//   //   } else if (ext === "xlsx") {
+//   //     reader.readAsArrayBuffer(selectedFile);
+//   //   }
+//   // };
+
+//   const handleFileChange = (e) => {
+//     const selectedFile = e.target.files[0];
+//     setFile(selectedFile);
+//     setWarnings([]);
+//     setResults([]);
+//     setInvalidCells([]);
+//     setDataPreview([]);
+//     setMissingColumns([]);
+
+//     const validation = validateFileBeforeParsing(selectedFile);
+
+//     console.log("Validation from handleFileChange", validation);
+
+//     if (!validation.valid) {
+//       alert(validation.message);
+//       return;
+//     }
+
+//     const reader = new FileReader();
+//     const ext = selectedFile.name.split(".").pop().toLowerCase();
+
+//     reader.onload = async (event) => {
+//       setUploading(true);
+//       await new Promise((resolve) => setTimeout(resolve, 100));
+
+//       let data = [];
+
+//       try {
+//         if (ext === "csv") {
+//           const parsed = Papa.parse(event.target.result, {
+//             header: true,
+//             skipEmptyLines: true,
+//           });
+//           data = parsed.data;
+//         } else if (ext === "xlsx") {
+//           const workbook = XLSX.read(event.target.result, { type: "array" });
+//           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+//           data = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+//           // ✅ Run Excel-specific header validation here
+//           try {
+//             const headersOnly = XLSX.utils.sheet_to_json(worksheet, {
+//               header: 1,
+//             });
+//             const headerRow = headersOnly[0];
+//             validateExcelHeaders(headerRow); // now takes headers directly
+//           } catch (headerErr) {
+//             console.log("HandleFileChange validateExcelHeaders", headerErr);
+//             alert(headerErr.message);
+//             setUploading(false);
+//             return;
+//           }
+//         } else {
+//           setWarnings(["❌ Unsupported file format"]);
+//           return;
+//         }
+
+//         validateAndPreview(data);
+//       } catch (err) {
+//         console.error("Parsing error:", err);
+//         alert("❌ Error reading the file. Please try again.");
+//       } finally {
+//         setUploading(false);
+//       }
+//     };
+
+//     if (ext === "csv") {
+//       reader.readAsText(selectedFile);
+//     } else if (ext === "xlsx") {
+//       reader.readAsArrayBuffer(selectedFile);
+//     }
+//   };
+
+//   const normalize = (str) =>
+//     str
+//       ?.toString()
+//       .toLowerCase()
+//       .replace(/[^a-z0-9]/gi, "");
 
 //   const validateAndPreview = (data) => {
-//     console.log("validateAndPreview funtion is working", data);
 //     const requiredIssues = new Set();
 //     const optionalWarnings = new Set();
 //     const invalids = [];
-//     const headers = Object.keys(data[0] || {});
-//     const seenRollNos = new Set();
 
-//     const missing = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
+//     if (!data || !data.length) {
+//       requiredIssues.add("❌ No data found in file.");
+//       setWarnings([...requiredIssues]);
+//       setHasErrors(true);
+//       return;
+//     }
+
+//     const rawHeaders = Object.keys(data[0]);
+//     const normalizedHeaders = rawHeaders.map(normalize);
+
+//     const headerMap = {};
+//     REQUIRED_COLUMNS.forEach((reqCol) => {
+//       const normalizedReq = normalize(reqCol);
+//       const index = normalizedHeaders.findIndex((h) => h === normalizedReq);
+//       if (index !== -1) {
+//         headerMap[reqCol] = rawHeaders[index];
+//       }
+//     });
+
+//     const missing = REQUIRED_COLUMNS.filter((col) => !headerMap[col]);
+//     setMissingColumns(missing);
+
 //     if (missing.length) {
 //       requiredIssues.add(`❌ Missing required columns: ${missing.join(", ")}`);
 //     }
 
+//     const seenRollNos = new Set();
+
 //     data.forEach((row, rowIndex) => {
-//       const rollNo = row["Roll No."];
-//       headers.forEach((col) => {
+//       const rollNoKey = headerMap["ROLL NO"];
+//       const rollNo = row[rollNoKey];
+
+//       rawHeaders.forEach((col) => {
 //         const value = row[col];
-//         const isRequired = REQUIRED_COLUMNS.includes(col);
+//         const isRequired = Object.values(headerMap).includes(col);
 
 //         if (!value || value.toString().trim() === "") {
 //           invalids.push({ row: rowIndex, field: col });
+
 //           const message = isRequired
 //             ? `Row ${rowIndex + 1}: "${col}" is required.`
 //             : `Row ${rowIndex + 1}: "${col}" is empty.`;
 
-//           if (isRequired) requiredIssues.add(message);
-//           else optionalWarnings.add(message);
+//           if (isRequired) {
+//             requiredIssues.add(message);
+//           } else {
+//             optionalWarnings.add(message);
+//           }
 //         }
 //       });
 
-//       if (seenRollNos.has(rollNo)) {
-//         requiredIssues.add(
-//           `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
-//         );
-//       } else {
-//         seenRollNos.add(rollNo);
+//       if (rollNoKey) {
+//         if (seenRollNos.has(rollNo)) {
+//           requiredIssues.add(
+//             `Row ${rowIndex + 1}: ⚠️ Duplicate "Roll No." detected.`
+//           );
+//         } else {
+//           seenRollNos.add(rollNo);
+//         }
 //       }
 //     });
 
 //     setInvalidCells(invalids);
 //     setWarnings([...requiredIssues, ...optionalWarnings]);
-//     setDataPreview(data);
-//     setHeaders(headers);
+//     setDataPreview(data.slice(0, 100));
+//     setHeaders(rawHeaders);
 //     setHasErrors(requiredIssues.size > 0);
 //     setHasOptionalWarnings(optionalWarnings.size > 0);
 //   };
@@ -477,14 +616,26 @@ export default UploadForm;
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
 
-//     if (!file) return alert("Please select a file.");
-//     if (!ptmDate) return alert("Please select PTM date.");
-//     if (hasErrors)
-//       return alert("❌ Submission blocked: Required fields are missing.");
+//     if (!file) {
+//       alert("Please select a file.");
+//       return;
+//     }
+
+//     if (!ptmDate) {
+//       alert("Please select PTM date.");
+//       return;
+//     }
+
+//     if (hasErrors) {
+//       alert(
+//         "❌ Submission blocked: Required fields are missing or duplicated value."
+//       );
+//       return;
+//     }
 
 //     if (hasOptionalWarnings) {
 //       const confirmProceed = window.confirm(
-//         "⚠️ Some optional fields are empty.\nDo you want to continue?"
+//         "⚠️ Some optional fields are empty.\nDo you want to continue without them?"
 //       );
 //       if (!confirmProceed) return;
 //     }
@@ -492,6 +643,7 @@ export default UploadForm;
 //     const formData = new FormData();
 //     formData.append("csvFile", file);
 //     formData.append("ptmDate", ptmDate);
+//     formData.append("type", "generate");
 
 //     try {
 //       setUploading(true);
@@ -506,24 +658,44 @@ export default UploadForm;
 //   };
 
 //   return (
-//     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4 ">
+//     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
 //       <Breadcrumb />
 //       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full text-center">
 //         <h2 className="text-2xl font-semibold text-slate-800 mb-2">
 //           📤 PTM Report Uploader
 //         </h2>
 //         <p className="text-slate-500 text-sm mb-4">
-//           Supported formats: <code>.xlsx</code>, <code>.csv</code>
+//           Supported formats: <code>.xlsx</code>, <code>.csv</code> (Max size:
+//           50MB)
 //         </p>
 
+//         {/* 🔒 File preparation rules */}
+//         <div className="bg-gray-50 border border-gray-200 p-4 rounded text-left text-sm text-gray-700 mb-6">
+//           <h3 className="font-semibold mb-2">
+//             📋 File Preparation Guidelines:
+//           </h3>
+//           <ul className="list-disc pl-5 space-y-1">
+//             <li>
+//               ✅ Only <code>.xlsx</code> or <code>.csv</code> files are allowed.
+//             </li>
+//             <li>
+//               ✅ Must contain required columns:{" "}
+//               <strong>Name, ROLL NO, Batch, Strength</strong>
+//             </li>
+//             <li>❌ Avoid merged cells or hidden headers.</li>
+//             <li>⚠️ No duplicate ROLL NO entries.</li>
+//             <li>
+//               ✅ Optional fields are allowed but must be named consistently.
+//             </li>
+//           </ul>
+//         </div>
+
+//         {/* Form */}
 //         <form
 //           onSubmit={handleSubmit}
 //           className="flex flex-col items-center gap-4"
 //         >
-//           <label
-//             htmlFor="ptmDate"
-//             className="w-full flex justify-center text-sm text-slate-700 font-medium self-start"
-//           >
+//           <label className="w-full flex justify-center text-sm text-slate-700 font-medium self-start">
 //             <div className="w-1/2 flex justify-start">Select PTM Date:</div>
 //           </label>
 //           <input
@@ -555,21 +727,34 @@ export default UploadForm;
 //           </button>
 //         </form>
 
-//         {/* Warnings */}
-//         {warnings.length > 0 && (
-//           <div className="mt-6 bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded text-left">
-//             <h4 className="font-semibold mb-2">⚠️ Validation Warnings:</h4>
-//             <ul className="list-disc pl-5 space-y-1 text-sm">
-//               {warnings.map((warn, idx) => (
-//                 <li key={idx}>{warn}</li>
-//               ))}
-//             </ul>
+//         {/* Missing columns alert */}
+//         {missingColumns.length > 0 && (
+//           <div className="mt-4 bg-red-50 border border-red-300 text-red-800 p-3 rounded text-sm text-left">
+//             <strong>❌ Missing required columns:</strong>{" "}
+//             {missingColumns.join(", ")}
 //           </div>
 //         )}
 
-//         {/* Data preview */}
+//         {/* Validation warnings */}
+//         {warnings.length > 0 && (
+//           <div className="mt-6 bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded text-left">
+//             <h4 className="font-semibold mb-2">⚠️ Validation Warnings:</h4>
+//             <div className="max-h-52 overflow-y-auto pr-2">
+//               <ul className="list-disc pl-5 space-y-1 text-sm">
+//                 {warnings.map((warn, idx) => (
+//                   <li key={idx}>{warn}</li>
+//                 ))}
+//               </ul>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Preview table */}
 //         {dataPreview.length > 0 && (
 //           <div className="mt-8 overflow-auto max-h-[400px] border border-gray-300 rounded">
+//             <p className="text-xs p-2 text-gray-500">
+//               Showing first 100 rows for preview.
+//             </p>
 //             <table className="min-w-full text-left text-xs">
 //               <thead>
 //                 <tr>
@@ -602,7 +787,7 @@ export default UploadForm;
 //           </div>
 //         )}
 
-//         {/* Upload Results */}
+//         {/* Generated report links */}
 //         {results?.length > 0 && (
 //           <div className="mt-8 text-left">
 //             <h3 className="text-lg font-medium text-slate-700 mb-4">

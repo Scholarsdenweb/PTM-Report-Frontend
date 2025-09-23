@@ -67,6 +67,7 @@ const SidebarLayout = ({ children }) => {
       : []),
       ...(role === "Admin" ? [{ to: "/reGenerate", label: "📤 Regenerate PTM Report" }] : []),
       ...(role === "Admin" ? [{ to: "/students", label: "📤 Student PTM Report" }] : []),
+      ...(role === "Admin" ? [{ to: "/send-whatsapp-message", label: "📤 Send Report On Whatsapp" }] : []),
 
   ];
 

@@ -61,12 +61,6 @@
 
 // export default BatchList;
 
-
-
-
-
-
-
 import React from "react";
 
 // Generate soft pastel color based on index
@@ -82,9 +76,7 @@ const BatchList = ({ batches, selectedBatch, onSelect }) => {
 
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-3 text-gray-800">
-        Select Batch
-      </h3>
+      <h3 className="text-lg font-semibold mb-3 text-gray-800">Select Batch</h3>
 
       {hasBatches ? (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
