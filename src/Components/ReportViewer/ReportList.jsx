@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "../../../api/axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 const ReportList = ({
   reports,
@@ -19,6 +19,8 @@ const ReportList = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { batchId, date } = useParams();
 
   const location = useLocation();
   const path = location.pathname.split("/")[1];
@@ -41,7 +43,6 @@ const ReportList = ({
   const [reportIds, setReportIds] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [sending, setSending] = useState(false); // for WhatsApp sending loading
-
 
   console.log("reports from reportList", reports);
 
@@ -153,22 +154,19 @@ const ReportList = ({
     }
   };
 
-  const handleSendSingleReportOnWhatsapp = async() => {
+  const handleSendSingleReportOnWhatsapp = async () => {
     console.log("handleSendSingleReportOnWhatsapp function is");
-      const response = await axios.post(
-      "/students/send-message-on-whatsapp",
-      currentReport
-    );
+    const response = await axios.post("/ptm/send-single-message-on-whatsapp", {
+      rollNo : currentReport.student.rollNo,
+      date,
+    });
 
-
-
-
+    console.log("response from handelSendSingleReportOnWhatsapp", response);
 
     console.log("response from sendReportOnWhatsappMessage", response);
     // setShowReportSendConfirmation(false);
 
     console.log("current Report", currentReport);
-    
   };
 
   return (
@@ -285,7 +283,7 @@ const ReportList = ({
                     🔗 Open Full PDF
                   </a>
 
-                  <button
+                { path === "send-whatsapp-message" &&  <button
                     type="button"
                     onClick={() => {
                       setShowReportSendConfirmation(true);
@@ -293,7 +291,7 @@ const ReportList = ({
                     }}
                   >
                     send
-                  </button>
+                  </button>}
                 </div>
               </div>
             </div>
