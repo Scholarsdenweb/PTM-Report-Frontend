@@ -10,7 +10,7 @@ import {
 } from "react-pdf-highlighter";
 import { PDFDocument, rgb } from "pdf-lib";
 
-import testPdf from "../assets/testPdf.pdf";
+// import testPdf from "../assets/testPdf.pdf";
 
 const PdfAnnotator = ({ student, onSaveSuccess }) => {
   const [highlights, setHighlights] = useState([]);
