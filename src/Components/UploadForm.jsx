@@ -115,7 +115,7 @@ const UploadForm = () => {
     }
   };
 
-const validateAndPreview = (data) => {
+  const validateAndPreview = (data) => {
     const criticalErrors = [];
     const warnings = [];
     const invalidCells = [];
@@ -134,33 +134,33 @@ const validateAndPreview = (data) => {
     }
 
     // Clean headers: remove leading/trailing spaces and double spaces
-    const rawHeaders = Object.keys(data[0]).map(h => 
-      h.trim().replace(/\s+/g, ' ')
+    const rawHeaders = Object.keys(data[0]).map((h) =>
+      h.trim().replace(/\s+/g, " ")
     );
-    
+
     // Check for duplicate headers
     const headerCounts = {};
     const duplicateHeaders = [];
-    rawHeaders.forEach(header => {
+    rawHeaders.forEach((header) => {
       headerCounts[header] = (headerCounts[header] || 0) + 1;
       if (headerCounts[header] === 2) {
         duplicateHeaders.push(header);
       }
     });
-    
+
     if (duplicateHeaders.length > 0) {
       criticalErrors.push({
         type: "DUPLICATE_HEADERS",
         message: `❌ Found ${duplicateHeaders.length} duplicate column name(s)`,
-        details: duplicateHeaders.map(h => 
-          `Column "${h}" appears ${headerCounts[h]} times`
-        ).join('\n'),
+        details: duplicateHeaders
+          .map((h) => `Column "${h}" appears ${headerCounts[h]} times`)
+          .join("\n"),
         fix: "Each column must have a unique name. Please rename or remove duplicate columns.",
       });
     }
-    
+
     // Remap data with cleaned headers
-    data = data.map(row => {
+    data = data.map((row) => {
       const cleanedRow = {};
       const originalHeaders = Object.keys(row);
       originalHeaders.forEach((oldHeader, index) => {
@@ -169,7 +169,6 @@ const validateAndPreview = (data) => {
       });
       return cleanedRow;
     });
-    
 
     const normalizedHeaders = rawHeaders.map(normalize);
 
@@ -380,7 +379,7 @@ const validateAndPreview = (data) => {
         // Check if subject is valid
         if (!VALID_RESULT_SUBJECTS.includes(subject)) {
           // Check if it's a typo (e.g., Bio1 instead of Bio)
-          
+
           const similarSubject = VALID_RESULT_SUBJECTS.find((valid) =>
             subject.toLowerCase().startsWith(valid.toLowerCase())
           );
@@ -407,8 +406,7 @@ const validateAndPreview = (data) => {
           invalidHeaders.push({
             header: header,
             issue: "Incomplete Objective Pattern column format",
-            expected:
-              "Format should be: Objective_Pattern_Date_Subject(Marks)",
+            expected: "Format should be: Objective_Pattern_Date_Subject(Marks)",
             example:
               "Objective_Pattern_07 July_Phy(10) or Objective_Pattern_2024_Phy(10)",
           });
@@ -714,17 +712,22 @@ const validateAndPreview = (data) => {
       // ============================================
       // 3.2: CHECK FOR DUPLICATE ROLL NUMBERS
       // ============================================
+
+      console.log("HeaderMap ", headerMap);
       const rollNoHeader = headerMap["rollno"];
       if (rollNoHeader) {
+        console.log("rollNoHeader from rollNoHeader", rollNoHeader);
+        console.log("rollNoHeader from rollNoHeader", row[rollNoHeader]);
         const rollNo = row[rollNoHeader]?.toString().replace(/,/g, "").trim();
         if (rollNo) {
+          console.log("rollNo from rollNoHeader", rollNo);
           if (seenRollNos.has(rollNo)) {
             if (!duplicateRollNos.includes(rollNo)) {
               duplicateRollNos.push(rollNo);
               criticalErrors.push({
                 type: "DUPLICATE_ROLL_NO",
                 message: `❌ Duplicate Roll No "${rollNo}" found`,
-                details: `This Roll No appears multiple times in the file. Each student must have a unique Roll No.`,
+                details: `This Roll No appears multiple times in the file. Each student must have a unique Roll No`,
                 fix: `Check rows with Roll No "${rollNo}" and ensure each student has a unique number`,
               });
             }
@@ -738,24 +741,31 @@ const validateAndPreview = (data) => {
       // ============================================
       // 3.3: VALIDATE ATTENDANCE DATA
       // ============================================
-        attendanceMonths.forEach((month) => {
+      attendanceMonths.forEach((month) => {
         const presentKey = rawHeaders.find(
           (h) => h === `Attendance_${month}_P`
         );
-        const absentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_A`
-        );
+        const absentKey = rawHeaders.find((h) => h === `Attendance_${month}_A`);
         const heldKey = `Attendance_${month}`;
 
         // Helper to check if value is empty or "-"
-        const isEmptyOrDash = (val) => 
-          val === undefined || val === null || val === "" || val.toString().trim() === "-";
+        const isEmptyOrDash = (val) =>
+          val === undefined ||
+          val === null ||
+          val === "" ||
+          val.toString().trim() === "-";
 
         // Check if attendance data exists for this month (excluding "-")
         const hasAttendanceData =
-          (row[presentKey] !== undefined && row[presentKey] !== "" && row[presentKey]?.toString().trim() !== "-") ||
-          (row[absentKey] !== undefined && row[absentKey] !== "" && row[absentKey]?.toString().trim() !== "-") ||
-          (row[heldKey] !== undefined && row[heldKey] !== "" && row[heldKey]?.toString().trim() !== "-");
+          (row[presentKey] !== undefined &&
+            row[presentKey] !== "" &&
+            row[presentKey]?.toString().trim() !== "-") ||
+          (row[absentKey] !== undefined &&
+            row[absentKey] !== "" &&
+            row[absentKey]?.toString().trim() !== "-") ||
+          (row[heldKey] !== undefined &&
+            row[heldKey] !== "" &&
+            row[heldKey]?.toString().trim() !== "-");
 
         if (hasAttendanceData) {
           // If present is filled, check if held is also filled
@@ -811,12 +821,11 @@ const validateAndPreview = (data) => {
         const totalKey = rawHeaders.find(
           (h) => h === `Result_${date}_Total` || h === `Result_${date}_Tot`
         );
-        const rankKey = rawHeaders.find(
-          (h) => h === `Result_${date}_Rank`
-        );
+        const rankKey = rawHeaders.find((h) => h === `Result_${date}_Rank`);
 
         // Check if student was absent for this exam by checking Rank column for "ABS" or "abs"
-        const isAbsent = rankKey && row[rankKey]?.toString().trim().toLowerCase() === "abs";
+        const isAbsent =
+          rankKey && row[rankKey]?.toString().trim().toLowerCase() === "abs";
 
         let hasAnySubjectData = false;
         possibleSubjects.forEach((subject) => {
@@ -852,7 +861,9 @@ const validateAndPreview = (data) => {
           hasAnySubjectData &&
           !isAbsent &&
           totalKey &&
-          (row[totalKey] === undefined || row[totalKey] === "" || row[totalKey]?.toString().trim() === "-")
+          (row[totalKey] === undefined ||
+            row[totalKey] === "" ||
+            row[totalKey]?.toString().trim() === "-")
         ) {
           // Only warn if total is truly missing, not if it's "-"
           if (row[totalKey]?.toString().trim() !== "-") {
@@ -1306,9 +1317,7 @@ const validateAndPreview = (data) => {
                               : "text-gray-800"
                           }`}
                         >
-                          {row[h] || (
-                            <span className="text-gray-400">—</span>
-                          )}
+                          {row[h] || <span className="text-gray-400">—</span>}
                         </td>
                       ))}
                     </tr>
