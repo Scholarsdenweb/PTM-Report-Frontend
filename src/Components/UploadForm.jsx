@@ -115,7 +115,7 @@ const UploadForm = () => {
     }
   };
 
-  const validateAndPreview = (data) => {
+const validateAndPreview = (data) => {
     const criticalErrors = [];
     const warnings = [];
     const invalidCells = [];
@@ -133,7 +133,44 @@ const UploadForm = () => {
       return { isValid: false, errors: criticalErrors };
     }
 
-    const rawHeaders = Object.keys(data[0]);
+    // Clean headers: remove leading/trailing spaces and double spaces
+    const rawHeaders = Object.keys(data[0]).map(h => 
+      h.trim().replace(/\s+/g, ' ')
+    );
+    
+    // Check for duplicate headers
+    const headerCounts = {};
+    const duplicateHeaders = [];
+    rawHeaders.forEach(header => {
+      headerCounts[header] = (headerCounts[header] || 0) + 1;
+      if (headerCounts[header] === 2) {
+        duplicateHeaders.push(header);
+      }
+    });
+    
+    if (duplicateHeaders.length > 0) {
+      criticalErrors.push({
+        type: "DUPLICATE_HEADERS",
+        message: `❌ Found ${duplicateHeaders.length} duplicate column name(s)`,
+        details: duplicateHeaders.map(h => 
+          `Column "${h}" appears ${headerCounts[h]} times`
+        ).join('\n'),
+        fix: "Each column must have a unique name. Please rename or remove duplicate columns.",
+      });
+    }
+    
+    // Remap data with cleaned headers
+    data = data.map(row => {
+      const cleanedRow = {};
+      const originalHeaders = Object.keys(row);
+      originalHeaders.forEach((oldHeader, index) => {
+        const cleanHeader = rawHeaders[index];
+        cleanedRow[cleanHeader] = row[oldHeader];
+      });
+      return cleanedRow;
+    });
+    
+
     const normalizedHeaders = rawHeaders.map(normalize);
 
     console.log("📋 Detected headers:", rawHeaders);
@@ -701,27 +738,32 @@ const UploadForm = () => {
       // ============================================
       // 3.3: VALIDATE ATTENDANCE DATA
       // ============================================
-      attendanceMonths.forEach((month) => {
+        attendanceMonths.forEach((month) => {
         const presentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_P` || h === `Attendance_${month}__P`
+          (h) => h === `Attendance_${month}_P`
         );
         const absentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_A` || h === `Attendance_${month}__A`
+          (h) => h === `Attendance_${month}_A`
         );
         const heldKey = `Attendance_${month}`;
 
-        // Check if attendance data exists for this month
+        // Helper to check if value is empty or "-"
+        const isEmptyOrDash = (val) => 
+          val === undefined || val === null || val === "" || val.toString().trim() === "-";
+
+        // Check if attendance data exists for this month (excluding "-")
         const hasAttendanceData =
-          (row[presentKey] !== undefined && row[presentKey] !== "") ||
-          (row[absentKey] !== undefined && row[absentKey] !== "") ||
-          (row[heldKey] !== undefined && row[heldKey] !== "");
+          (row[presentKey] !== undefined && row[presentKey] !== "" && row[presentKey]?.toString().trim() !== "-") ||
+          (row[absentKey] !== undefined && row[absentKey] !== "" && row[absentKey]?.toString().trim() !== "-") ||
+          (row[heldKey] !== undefined && row[heldKey] !== "" && row[heldKey]?.toString().trim() !== "-");
 
         if (hasAttendanceData) {
           // If present is filled, check if held is also filled
           if (
             row[presentKey] !== undefined &&
             row[presentKey] !== "" &&
-            (row[heldKey] === undefined || row[heldKey] === "")
+            row[presentKey]?.toString().trim() !== "-" &&
+            isEmptyOrDash(row[heldKey])
           ) {
             warnings.push({
               type: "INCOMPLETE_ATTENDANCE",
@@ -736,7 +778,8 @@ const UploadForm = () => {
           if (
             presentKey &&
             row[presentKey] !== undefined &&
-            row[presentKey] !== ""
+            row[presentKey] !== "" &&
+            row[presentKey]?.toString().trim() !== "-"
           ) {
             const present = parseFloat(row[presentKey]);
             if (isNaN(present) || present < 0) {
@@ -744,7 +787,7 @@ const UploadForm = () => {
                 type: "INVALID_ATTENDANCE",
                 message: `⚠️ Row ${rowNum}: Invalid Present value "${row[presentKey]}" for ${month}`,
                 row: rowNum,
-                fix: "Present days must be a positive number",
+                fix: "Present days must be a positive number or '-' for no data",
               });
             }
           }
@@ -768,6 +811,12 @@ const UploadForm = () => {
         const totalKey = rawHeaders.find(
           (h) => h === `Result_${date}_Total` || h === `Result_${date}_Tot`
         );
+        const rankKey = rawHeaders.find(
+          (h) => h === `Result_${date}_Rank`
+        );
+
+        // Check if student was absent for this exam by checking Rank column for "ABS" or "abs"
+        const isAbsent = rankKey && row[rankKey]?.toString().trim().toLowerCase() === "abs";
 
         let hasAnySubjectData = false;
         possibleSubjects.forEach((subject) => {
@@ -775,38 +824,47 @@ const UploadForm = () => {
           if (
             rawHeaders.includes(key) &&
             row[key] !== undefined &&
-            row[key] !== ""
+            row[key] !== "" &&
+            row[key]?.toString().trim() !== "-"
           ) {
-            hasAnySubjectData = true;
+            // If student was absent, don't count this as actual data
+            if (!isAbsent) {
+              hasAnySubjectData = true;
+            }
 
-            // Validate numeric
-            const marks = parseFloat(row[key]);
-            if (isNaN(marks)) {
-              warnings.push({
-                type: "INVALID_MARKS",
-                message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
-                row: rowNum,
-                fix: "Marks must be a number",
-              });
+            // Validate numeric (skip if student was absent or value is "-")
+            if (!isAbsent) {
+              const marks = parseFloat(row[key]);
+              if (isNaN(marks)) {
+                warnings.push({
+                  type: "INVALID_MARKS",
+                  message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
+                  row: rowNum,
+                  fix: "Marks must be a number or '-' for absent/no data",
+                });
+              }
             }
           }
         });
 
-        // If there's subject data but no total, warn
+        // If there's subject data but no total, warn (unless total is "-" or student was absent)
         if (
           hasAnySubjectData &&
+          !isAbsent &&
           totalKey &&
-          (row[totalKey] === undefined || row[totalKey] === "")
+          (row[totalKey] === undefined || row[totalKey] === "" || row[totalKey]?.toString().trim() === "-")
         ) {
-          warnings.push({
-            type: "MISSING_TOTAL",
-            message: `⚠️ Row ${rowNum}: Result for ${date} has subject marks but missing Total`,
-            row: rowNum,
-            fix: `Add the total marks for ${date} exam`,
-          });
+          // Only warn if total is truly missing, not if it's "-"
+          if (row[totalKey]?.toString().trim() !== "-") {
+            warnings.push({
+              type: "MISSING_TOTAL",
+              message: `⚠️ Row ${rowNum}: Result for ${date} has subject marks but missing Total`,
+              row: rowNum,
+              fix: `Add the total marks for ${date} exam or use '-' for no data`,
+            });
+          }
         }
       });
-
       // ============================================
       // 3.5: VALIDATE OBJECTIVE PATTERN DATA
       // ============================================
