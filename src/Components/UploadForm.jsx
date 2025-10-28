@@ -133,43 +133,7 @@ const UploadForm = () => {
       return { isValid: false, errors: criticalErrors };
     }
 
-    // Clean headers: remove leading/trailing spaces and double spaces
-    const rawHeaders = Object.keys(data[0]).map((h) =>
-      h.trim().replace(/\s+/g, " ")
-    );
-
-    // Check for duplicate headers
-    const headerCounts = {};
-    const duplicateHeaders = [];
-    rawHeaders.forEach((header) => {
-      headerCounts[header] = (headerCounts[header] || 0) + 1;
-      if (headerCounts[header] === 2) {
-        duplicateHeaders.push(header);
-      }
-    });
-
-    if (duplicateHeaders.length > 0) {
-      criticalErrors.push({
-        type: "DUPLICATE_HEADERS",
-        message: `❌ Found ${duplicateHeaders.length} duplicate column name(s)`,
-        details: duplicateHeaders
-          .map((h) => `Column "${h}" appears ${headerCounts[h]} times`)
-          .join("\n"),
-        fix: "Each column must have a unique name. Please rename or remove duplicate columns.",
-      });
-    }
-
-    // Remap data with cleaned headers
-    data = data.map((row) => {
-      const cleanedRow = {};
-      const originalHeaders = Object.keys(row);
-      originalHeaders.forEach((oldHeader, index) => {
-        const cleanHeader = rawHeaders[index];
-        cleanedRow[cleanHeader] = row[oldHeader];
-      });
-      return cleanedRow;
-    });
-
+    const rawHeaders = Object.keys(data[0]);
     const normalizedHeaders = rawHeaders.map(normalize);
 
     console.log("📋 Detected headers:", rawHeaders);
@@ -180,9 +144,13 @@ const UploadForm = () => {
     // ============================================
     const headerMap = {};
     const missingRequired = [];
+    const similarButInvalidHeaders = [];
 
     REQUIRED_NORMALIZED.forEach((normKey) => {
       const aliases = HEADER_ALIASES[normKey] || [];
+
+      console.log("aliases from normalized", aliases);
+
       const normAliases = aliases.map(normalize);
 
       let found = false;
@@ -195,6 +163,24 @@ const UploadForm = () => {
       }
 
       if (!found) {
+        // Check if there's a similar but invalid header (e.g., "Roll No." instead of "Roll No")
+        if (normKey === "rollno") {
+          const invalidVariations = rawHeaders.filter(
+            (h) => /^roll\s*no\.?$/i.test(h) && !aliases.includes(h)
+          );
+
+          if (invalidVariations.length > 0) {
+            invalidVariations.forEach((invalidHeader) => {
+              similarButInvalidHeaders.push({
+                found: invalidHeader,
+                expected: aliases,
+                normKey: normKey,
+                issue: `Found "${invalidHeader}" but it's not in the accepted format`,
+              });
+            });
+          }
+        }
+        console.log("Aliases from missingRequired", aliases);
         missingRequired.push({
           field: normKey,
           expectedNames: aliases.join(" / "),
@@ -203,6 +189,20 @@ const UploadForm = () => {
       }
     });
 
+    // Report similar but invalid headers first
+    if (similarButInvalidHeaders.length > 0) {
+      similarButInvalidHeaders.forEach((invalid) => {
+        criticalErrors.push({
+          type: "INVALID_HEADER_VARIATION",
+          message: `❌ Invalid column name: "${invalid.found}"`,
+          details: invalid.issue,
+          expected: `Accepted formats: ${invalid.expected.join(", ")}`,
+          fix: `Rename "${invalid.found}" to "${invalid.expected[0]}" (without period or extra characters)`,
+        });
+      });
+    }
+
+    // Report missing required headers
     if (missingRequired.length > 0) {
       criticalErrors.push({
         type: "MISSING_HEADERS",
@@ -289,11 +289,11 @@ const UploadForm = () => {
       "Maths",
       "Math",
       "Biology",
-      "Botany",
-      "Zoology",
+      "English",
       "Physical Chemistry",
       "Organic Chemistry",
-      "English",
+      "Zoology",
+      "Botany",
       "Total",
     ];
 
@@ -321,7 +321,7 @@ const UploadForm = () => {
             expected:
               "Format should be: Attendance_MonthName_P, Attendance_MonthName_A, or Attendance_MonthName_Per",
             example:
-              "Attendance_March_P, Attendance_March__P, Attendance_March_Per",
+              "Attendance_March_P, Attendance_March_A, Attendance_March_Per",
           });
         }
         return;
@@ -379,7 +379,6 @@ const UploadForm = () => {
         // Check if subject is valid
         if (!VALID_RESULT_SUBJECTS.includes(subject)) {
           // Check if it's a typo (e.g., Bio1 instead of Bio)
-
           const similarSubject = VALID_RESULT_SUBJECTS.find((valid) =>
             subject.toLowerCase().startsWith(valid.toLowerCase())
           );
@@ -619,6 +618,8 @@ const UploadForm = () => {
       if (feedbackMatch) {
         const subject = feedbackMatch[1];
 
+        console.log(" feedback from feedbackMatch", feedbackMatch);
+
         // Normalize subject name for comparison
         const normalizedSubject = subject
           .replace(/[^a-zA-Z]/g, "")
@@ -712,22 +713,20 @@ const UploadForm = () => {
       // ============================================
       // 3.2: CHECK FOR DUPLICATE ROLL NUMBERS
       // ============================================
-
-      console.log("HeaderMap ", headerMap);
       const rollNoHeader = headerMap["rollno"];
+      console.log("rollNoHeader from rollNoHeader ", rollNoHeader);
       if (rollNoHeader) {
-        console.log("rollNoHeader from rollNoHeader", rollNoHeader);
-        console.log("rollNoHeader from rollNoHeader", row[rollNoHeader]);
         const rollNo = row[rollNoHeader]?.toString().replace(/,/g, "").trim();
         if (rollNo) {
-          console.log("rollNo from rollNoHeader", rollNo);
+          console.log("rollNo from rollNoHeader", seenRollNos);
+
           if (seenRollNos.has(rollNo)) {
             if (!duplicateRollNos.includes(rollNo)) {
               duplicateRollNos.push(rollNo);
               criticalErrors.push({
                 type: "DUPLICATE_ROLL_NO",
                 message: `❌ Duplicate Roll No "${rollNo}" found`,
-                details: `This Roll No appears multiple times in the file. Each student must have a unique Roll No`,
+                details: `This Roll No appears multiple times in the file. Each student must have a unique Roll No.`,
                 fix: `Check rows with Roll No "${rollNo}" and ensure each student has a unique number`,
               });
             }
@@ -743,37 +742,25 @@ const UploadForm = () => {
       // ============================================
       attendanceMonths.forEach((month) => {
         const presentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_P`
+          (h) => h === `Attendance_${month}_P` || h === `Attendance_${month}__P`
         );
-        const absentKey = rawHeaders.find((h) => h === `Attendance_${month}_A`);
+        const absentKey = rawHeaders.find(
+          (h) => h === `Attendance_${month}_A` || h === `Attendance_${month}__A`
+        );
         const heldKey = `Attendance_${month}`;
 
-        // Helper to check if value is empty or "-"
-        const isEmptyOrDash = (val) =>
-          val === undefined ||
-          val === null ||
-          val === "" ||
-          val.toString().trim() === "-";
-
-        // Check if attendance data exists for this month (excluding "-")
+        // Check if attendance data exists for this month
         const hasAttendanceData =
-          (row[presentKey] !== undefined &&
-            row[presentKey] !== "" &&
-            row[presentKey]?.toString().trim() !== "-") ||
-          (row[absentKey] !== undefined &&
-            row[absentKey] !== "" &&
-            row[absentKey]?.toString().trim() !== "-") ||
-          (row[heldKey] !== undefined &&
-            row[heldKey] !== "" &&
-            row[heldKey]?.toString().trim() !== "-");
+          (row[presentKey] !== undefined && row[presentKey] !== "") ||
+          (row[absentKey] !== undefined && row[absentKey] !== "") ||
+          (row[heldKey] !== undefined && row[heldKey] !== "");
 
         if (hasAttendanceData) {
           // If present is filled, check if held is also filled
           if (
             row[presentKey] !== undefined &&
             row[presentKey] !== "" &&
-            row[presentKey]?.toString().trim() !== "-" &&
-            isEmptyOrDash(row[heldKey])
+            (row[heldKey] === undefined || row[heldKey] === "")
           ) {
             warnings.push({
               type: "INCOMPLETE_ATTENDANCE",
@@ -788,8 +775,7 @@ const UploadForm = () => {
           if (
             presentKey &&
             row[presentKey] !== undefined &&
-            row[presentKey] !== "" &&
-            row[presentKey]?.toString().trim() !== "-"
+            row[presentKey] !== ""
           ) {
             const present = parseFloat(row[presentKey]);
             if (isNaN(present) || present < 0) {
@@ -797,7 +783,7 @@ const UploadForm = () => {
                 type: "INVALID_ATTENDANCE",
                 message: `⚠️ Row ${rowNum}: Invalid Present value "${row[presentKey]}" for ${month}`,
                 row: rowNum,
-                fix: "Present days must be a positive number or '-' for no data",
+                fix: "Present days must be a positive number",
               });
             }
           }
@@ -821,11 +807,6 @@ const UploadForm = () => {
         const totalKey = rawHeaders.find(
           (h) => h === `Result_${date}_Total` || h === `Result_${date}_Tot`
         );
-        const rankKey = rawHeaders.find((h) => h === `Result_${date}_Rank`);
-
-        // Check if student was absent for this exam by checking Rank column for "ABS" or "abs"
-        const isAbsent =
-          rankKey && row[rankKey]?.toString().trim().toLowerCase() === "abs";
 
         let hasAnySubjectData = false;
         possibleSubjects.forEach((subject) => {
@@ -833,49 +814,38 @@ const UploadForm = () => {
           if (
             rawHeaders.includes(key) &&
             row[key] !== undefined &&
-            row[key] !== "" &&
-            row[key]?.toString().trim() !== "-"
+            row[key] !== ""
           ) {
-            // If student was absent, don't count this as actual data
-            if (!isAbsent) {
-              hasAnySubjectData = true;
-            }
+            hasAnySubjectData = true;
 
-            // Validate numeric (skip if student was absent or value is "-")
-            if (!isAbsent) {
-              const marks = parseFloat(row[key]);
-              if (isNaN(marks)) {
-                warnings.push({
-                  type: "INVALID_MARKS",
-                  message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
-                  row: rowNum,
-                  fix: "Marks must be a number or '-' for absent/no data",
-                });
-              }
+            // Validate numeric
+            const marks = parseFloat(row[key]);
+            if (isNaN(marks)) {
+              warnings.push({
+                type: "INVALID_MARKS",
+                message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
+                row: rowNum,
+                fix: "Marks must be a number",
+              });
             }
           }
         });
 
-        // If there's subject data but no total, warn (unless total is "-" or student was absent)
+        // If there's subject data but no total, warn
         if (
           hasAnySubjectData &&
-          !isAbsent &&
           totalKey &&
-          (row[totalKey] === undefined ||
-            row[totalKey] === "" ||
-            row[totalKey]?.toString().trim() === "-")
+          (row[totalKey] === undefined || row[totalKey] === "")
         ) {
-          // Only warn if total is truly missing, not if it's "-"
-          if (row[totalKey]?.toString().trim() !== "-") {
-            warnings.push({
-              type: "MISSING_TOTAL",
-              message: `⚠️ Row ${rowNum}: Result for ${date} has subject marks but missing Total`,
-              row: rowNum,
-              fix: `Add the total marks for ${date} exam or use '-' for no data`,
-            });
-          }
+          warnings.push({
+            type: "MISSING_TOTAL",
+            message: `⚠️ Row ${rowNum}: Result for ${date} has subject marks but missing Total`,
+            row: rowNum,
+            fix: `Add the total marks for ${date} exam`,
+          });
         }
       });
+
       // ============================================
       // 3.5: VALIDATE OBJECTIVE PATTERN DATA
       // ============================================
