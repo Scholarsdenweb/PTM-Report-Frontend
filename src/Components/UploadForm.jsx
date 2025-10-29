@@ -148,9 +148,6 @@ const UploadForm = () => {
 
     REQUIRED_NORMALIZED.forEach((normKey) => {
       const aliases = HEADER_ALIASES[normKey] || [];
-
-      console.log("aliases from normalized", aliases);
-
       const normAliases = aliases.map(normalize);
 
       let found = false;
@@ -180,7 +177,7 @@ const UploadForm = () => {
             });
           }
         }
-        console.log("Aliases from missingRequired", aliases);
+
         missingRequired.push({
           field: normKey,
           expectedNames: aliases.join(" / "),
@@ -222,6 +219,88 @@ const UploadForm = () => {
     const jeeAdvDates = new Set();
     const objectivePatternDates = new Set();
     const subjectivePatternDates = new Set();
+
+    // Valid months for attendance (SHORT NAMES ONLY)
+    const VALID_MONTHS = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sept",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    // Helper function to validate date format "DD Month" or "YYYY"
+    const isValidDate = (dateStr) => {
+      // Check if it's a year (4 digits)
+      if (/^\d{4}$/.test(dateStr)) {
+        const year = parseInt(dateStr);
+        return year >= 1900 && year <= 2100;
+      }
+
+      // Check if it's "DD Month" format
+      const datePattern = /^(\d{1,2})\s+([A-Za-z]+)$/;
+      const match = dateStr.match(datePattern);
+
+      if (!match) return false;
+
+      const day = parseInt(match[1]);
+      const month = match[2];
+
+      // Validate day (1-31)
+      if (day < 1 || day > 31) {
+        return {
+          valid: false,
+          error: `Invalid day: ${day}. Day must be between 1 and 31`,
+        };
+      }
+
+      // Validate month name (SHORT NAMES ONLY)
+      if (!VALID_MONTHS.includes(month)) {
+        return {
+          valid: false,
+          error: `Invalid month: "${month}". Only short month names allowed: ${VALID_MONTHS.join(
+            ", "
+          )}`,
+        };
+      }
+
+      // Check day range based on month
+      const monthsWith30Days = ["Apr", "Jun", "Sept", "Nov"];
+      const monthsWith31Days = [
+        "Jan",
+        "Mar",
+        "May",
+        "Jul",
+        "Aug",
+        "Oct",
+        "Dec",
+      ];
+
+      if (monthsWith30Days.includes(month) && day > 30) {
+        return {
+          valid: false,
+          error: `${month} has only 30 days, but got day ${day}`,
+        };
+      }
+
+      if (month === "Feb") {
+        if (day > 29) {
+          return {
+            valid: false,
+            error: `Feb has maximum 29 days, but got day ${day}`,
+          };
+        }
+      }
+
+      return { valid: true };
+    };
 
     // Valid subject names for different patterns
     const VALID_RESULT_SUBJECTS = [
@@ -282,18 +361,19 @@ const UploadForm = () => {
       "Highest_Marks",
       "Highest Marks",
     ];
+
     const VALID_FEEDBACK_SUBJECTS = [
       "Physics",
       "Chemistry",
+      "Botany",
+      "Zoology",
+      "Physical Chemistry",
+      "Organic Chemistry",
       "Mathematics",
       "Maths",
       "Math",
       "Biology",
       "English",
-      "Physical Chemistry",
-      "Organic Chemistry",
-      "Zoology",
-      "Botany",
       "Total",
     ];
 
@@ -301,17 +381,47 @@ const UploadForm = () => {
       // Skip known required headers
       if (Object.values(headerMap).includes(header)) return;
 
-      // Check Attendance pattern: Attendance_March_P or Attendance_March__P
+      // Check Attendance pattern: Attendance_March_P or Attendance_March_P
       if (header.startsWith("Attendance_")) {
         const attMatch = header.match(
           /^Attendance_([A-Za-z]+)(_*)([PA]|Per|PER|per)$/i
         );
         if (attMatch) {
           const month = attMatch[1];
+
+          // Validate month name (SHORT NAMES ONLY)
+          if (!VALID_MONTHS.includes(month)) {
+            invalidHeaders.push({
+              header: header,
+              issue: `Invalid month name: "${month}"`,
+              expected: `Only short month names are allowed: ${VALID_MONTHS.join(
+                ", "
+              )}`,
+              example: "Attendance_Mar_P, Attendance_Jan_A, Attendance_Apr_Per",
+              fix: `Change "${month}" to a valid short month name (e.g., Jan, Feb, Mar)`,
+            });
+            return;
+          }
+
           attendanceMonths.add(month);
         } else if (header.match(/^Attendance_([A-Za-z]+)$/)) {
           // This is the base attendance column (total held)
           const month = header.match(/^Attendance_([A-Za-z]+)$/)[1];
+
+          // Validate month name (SHORT NAMES ONLY)
+          if (!VALID_MONTHS.includes(month)) {
+            invalidHeaders.push({
+              header: header,
+              issue: `Invalid month name: "${month}"`,
+              expected: `Only short month names are allowed: ${VALID_MONTHS.join(
+                ", "
+              )}`,
+              example: "Attendance_Mar, Attendance_Jan, Attendance_Apr",
+              fix: `Change "${month}" to a valid short month name (e.g., Jan, Feb, Mar)`,
+            });
+            return;
+          }
+
           attendanceMonths.add(month);
         } else {
           // Invalid attendance pattern
@@ -321,7 +431,7 @@ const UploadForm = () => {
             expected:
               "Format should be: Attendance_MonthName_P, Attendance_MonthName_A, or Attendance_MonthName_Per",
             example:
-              "Attendance_March_P, Attendance_March_A, Attendance_March_Per",
+              "Attendance_March_P, Attendance_March_P, Attendance_March_Per",
           });
         }
         return;
@@ -345,7 +455,7 @@ const UploadForm = () => {
         const date = parts[1];
         const subject = parts.slice(2).join("_");
 
-        // Valid date formats: "07 July", "13 September", "2024"
+        // Valid date formats: "07 July", "13 Sept", "2024"
         const validDatePattern = /^(\d{1,2}\s+[A-Za-z]+|\d{4})$/;
 
         if (!validDatePattern.test(date)) {
@@ -358,9 +468,9 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' with a space (e.g., '07 July', '13 September')",
-              example: `Use 'Result_${match[1]} ${match[2]}_${subject}' instead of '${header}'`,
-              fix: `Correct format: Result_${match[1]} ${match[2]}_${subject}`,
+                "Date should be in format 'DD Month' with a space (e.g., '07 Jul', '13 Sept') using short month names only",
+              example: `Use 'Result_${match[1]} Jul_${subject}' instead of '${header}'`,
+              fix: `Correct format: Result_${match[1]} [ShortMonth]_${subject} (e.g., Jan, Feb, Mar)`,
             });
             return;
           } else {
@@ -368,12 +478,26 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' (e.g., '07 July') or 'YYYY' (e.g., '2024')",
-              example: "Result_07 July_Physics or Result_2024_Physics",
-              fix: "Use proper date format with space between day and month",
+                "Date should be in format 'DD Month' (e.g., '07 Jul', '15 Mar') using short month names or 'YYYY' (e.g., '2024')",
+              example: "Result_07 Jul_Physics or Result_2024_Physics",
+              fix: "Use proper date format with space and SHORT month name (Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov, Dec)",
             });
             return;
           }
+        }
+
+        // Validate the date is actually valid (correct day/month)
+        const dateValidation = isValidDate(date);
+        if (dateValidation.valid === false) {
+          invalidHeaders.push({
+            header: header,
+            issue: `Invalid date: "${date}"`,
+            details: dateValidation.error,
+            expected: "Date must have valid day (1-31) and valid month name",
+            example: "Result_07 July_Physics, Result_31 March_Chemistry",
+            fix: dateValidation.error,
+          });
+          return;
         }
 
         // Check if subject is valid
@@ -425,8 +549,9 @@ const UploadForm = () => {
             invalidHeaders.push({
               header: header,
               issue: `Invalid date format: "${date}"`,
-              expected: "Date should be in format 'DD Month' with a space",
-              fix: `Correct format: Objective_Pattern_${match[1]} ${match[2]}_${subject}`,
+              expected:
+                "Date should be in format 'DD Month' with a space using short month names",
+              fix: `Correct format: Objective_Pattern_${match[1]} [ShortMonth]_${subject} (e.g., Jan, Feb, Mar)`,
             });
             return;
           } else {
@@ -434,11 +559,25 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' (e.g., '07 July') or 'YYYY'",
-              example: "Objective_Pattern_07 July_Phy(10)",
+                "Date should be in format 'DD Month' (e.g., '07 Jul') using short month names or 'YYYY'",
+              example: "Objective_Pattern_07 Jul_Phy(10)",
             });
             return;
           }
+        }
+
+        // Validate the date is actually valid
+        const dateValidation = isValidDate(date);
+        if (dateValidation.valid === false) {
+          invalidHeaders.push({
+            header: header,
+            issue: `Invalid date: "${date}"`,
+            details: dateValidation.error,
+            expected:
+              "Date must have valid day (1-31) and valid SHORT month name",
+            fix: dateValidation.error,
+          });
+          return;
         }
 
         // Check if subject is valid
@@ -484,8 +623,9 @@ const UploadForm = () => {
             invalidHeaders.push({
               header: header,
               issue: `Invalid date format: "${date}"`,
-              expected: "Date should be in format 'DD Month' with a space",
-              fix: `Correct format: Subjective_Pattern_${match[1]} ${match[2]}_${subject}`,
+              expected:
+                "Date should be in format 'DD Month' with a space using short month names",
+              fix: `Correct format: Subjective_Pattern_${match[1]} [ShortMonth]_${subject} (e.g., Jan, Feb, Mar)`,
             });
             return;
           } else {
@@ -493,11 +633,24 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' (e.g., '07 July') or 'YYYY'",
-              example: "Subjective_Pattern_07 July_Phy(14)",
+                "Date should be in format 'DD Month' (e.g., '07 Jul') using short month names or 'YYYY'",
+              example: "Subjective_Pattern_07 Jul_Phy(14)",
             });
             return;
           }
+        }
+
+        // Validate the date is actually valid
+        const dateValidation = isValidDate(date);
+        if (dateValidation.valid === false) {
+          invalidHeaders.push({
+            header: header,
+            issue: `Invalid date: "${date}"`,
+            details: dateValidation.error,
+            expected: "Date must have valid day (1-31) and valid month name",
+            fix: dateValidation.error,
+          });
+          return;
         }
 
         if (!VALID_SUBJECTIVE_SUBJECTS.includes(subject)) {
@@ -540,8 +693,9 @@ const UploadForm = () => {
             invalidHeaders.push({
               header: header,
               issue: `Invalid date format: "${date}"`,
-              expected: "Date should be in format 'DD Month' with a space",
-              fix: `Correct format: Board_Result_${match[1]} ${match[2]}_${subject}`,
+              expected:
+                "Date should be in format 'DD Month' with a space using short month names",
+              fix: `Correct format: Board_Result_${match[1]} [ShortMonth]_${subject} (e.g., Jan, Feb, Mar)`,
             });
             return;
           } else {
@@ -549,11 +703,24 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' (e.g., '07 July') or 'YYYY'",
-              example: "Board_Result_07 July_Physics",
+                "Date should be in format 'DD Month' (e.g., '07 Jul') using short month names or 'YYYY'",
+              example: "Board_Result_07 Jul_Physics",
             });
             return;
           }
+        }
+
+        // Validate the date is actually valid
+        const dateValidation = isValidDate(date);
+        if (dateValidation.valid === false) {
+          invalidHeaders.push({
+            header: header,
+            issue: `Invalid date: "${date}"`,
+            details: dateValidation.error,
+            expected: "Date must have valid day (1-31) and valid month name",
+            fix: dateValidation.error,
+          });
+          return;
         }
 
         boardResultDates.add(date);
@@ -592,12 +759,27 @@ const UploadForm = () => {
               invalidHeaders.push({
                 header: header,
                 issue: `Invalid date format: "${date}"`,
-                expected: "Date should be in format 'DD Month' with a space",
-                example: "JEE_ADV_Result_Paper 1_Result_07 July_Phy",
-                fix: `Use proper date format with space`,
+                expected:
+                  "Date should be in format 'DD Month' with a space using short month names",
+                example: "JEE_ADV_Result_Paper 1_Result_07 Jul_Phy",
+                fix: `Use proper date format with space and short month name (Jan, Feb, Mar, etc.)`,
               });
               return;
             }
+          }
+
+          // Validate the date is actually valid
+          const dateValidation = isValidDate(date);
+          if (dateValidation.valid === false) {
+            invalidHeaders.push({
+              header: header,
+              issue: `Invalid date: "${date}"`,
+              details: dateValidation.error,
+              expected:
+                "Date must have valid day (1-31) and valid SHORT month name",
+              fix: dateValidation.error,
+            });
+            return;
           }
 
           jeeAdvDates.add(date);
@@ -618,8 +800,6 @@ const UploadForm = () => {
       if (feedbackMatch) {
         const subject = feedbackMatch[1];
 
-        console.log(" feedback from feedbackMatch", feedbackMatch);
-
         // Normalize subject name for comparison
         const normalizedSubject = subject
           .replace(/[^a-zA-Z]/g, "")
@@ -637,6 +817,39 @@ const UploadForm = () => {
           });
         }
         return;
+      }
+
+      // Check for invalid feedback field suffixes (e.g., Botany_OD, Physics_XYZ)
+      // Pattern: Subject_Something (but Something is not CR, D, CA, or HW)
+      const potentialFeedbackMatch = header.match(/^(.+)_([A-Z]+)$/);
+      if (potentialFeedbackMatch) {
+        const subject = potentialFeedbackMatch[1];
+        const field = potentialFeedbackMatch[2];
+
+        // Check if subject looks like a feedback subject
+        const normalizedSubject = subject
+          .replace(/[^a-zA-Z]/g, "")
+          .toLowerCase();
+        const validNormalized = VALID_FEEDBACK_SUBJECTS.map((s) =>
+          s.replace(/[^a-zA-Z]/g, "").toLowerCase()
+        );
+
+        // If it's a known subject but invalid field, or looks like a feedback column
+        if (
+          validNormalized.includes(normalizedSubject) ||
+          /^(Physics|Chemistry|Mathematics|Math|Maths|Biology|Botany|Zoology|English)/i.test(
+            subject
+          )
+        ) {
+          invalidHeaders.push({
+            header: header,
+            issue: `Invalid feedback field: "${field}"`,
+            expected: `Feedback columns must end with: CR, D, CA, or HW`,
+            example: `${subject}_CR, ${subject}_D, ${subject}_CA, ${subject}_HW`,
+            fix: `Change "${header}" to use one of the valid feedback fields (CR, D, CA, HW)`,
+          });
+          return;
+        }
       }
     });
 
@@ -714,12 +927,9 @@ const UploadForm = () => {
       // 3.2: CHECK FOR DUPLICATE ROLL NUMBERS
       // ============================================
       const rollNoHeader = headerMap["rollno"];
-      console.log("rollNoHeader from rollNoHeader ", rollNoHeader);
       if (rollNoHeader) {
         const rollNo = row[rollNoHeader]?.toString().replace(/,/g, "").trim();
         if (rollNo) {
-          console.log("rollNo from rollNoHeader", seenRollNos);
-
           if (seenRollNos.has(rollNo)) {
             if (!duplicateRollNos.includes(rollNo)) {
               duplicateRollNos.push(rollNo);
@@ -742,10 +952,10 @@ const UploadForm = () => {
       // ============================================
       attendanceMonths.forEach((month) => {
         const presentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_P` || h === `Attendance_${month}__P`
+          (h) => h === `Attendance_${month}_P` || h === `Attendance_${month}_P`
         );
         const absentKey = rawHeaders.find(
-          (h) => h === `Attendance_${month}_A` || h === `Attendance_${month}__A`
+          (h) => h === `Attendance_${month}_A` || h === `Attendance_${month}_A`
         );
         const heldKey = `Attendance_${month}`;
 
