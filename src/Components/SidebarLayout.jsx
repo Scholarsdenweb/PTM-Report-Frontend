@@ -56,7 +56,7 @@ const SidebarLayout = ({ children }) => {
     ...(role === "Admin" || role === "Faculty"
       ? [
           {
-            to: role === "Admin" ? "/reports" : "/facultyDashboard",
+            to: "/reports",
             label: "📑 Reports",
             isActive: isReportsActive,
           },
@@ -67,6 +67,7 @@ const SidebarLayout = ({ children }) => {
       : []),
       ...(role === "Admin" ? [{ to: "/reGenerate", label: "📤 Regenerate PTM Report" }] : []),
       ...(role === "Admin" ? [{ to: "/students", label: "📤 Student PTM Report" }] : []),
+      // ...(role === "Admin" || role === "Faculty" ? [{ to: "/students", label: "📤 Student PTM Report" }] : []),
       ...(role === "Admin" ? [{ to: "/send-whatsapp-message", label: "📤 Send Report On Whatsapp" }] : []),
 
   ];

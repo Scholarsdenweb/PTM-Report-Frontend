@@ -361,17 +361,16 @@ const UploadForm = () => {
       "Highest_Marks",
       "Highest Marks",
     ];
-
     const VALID_FEEDBACK_SUBJECTS = [
       "Physics",
       "Chemistry",
+      "Mathematics",
+      "Maths",
+      "Math",
       "Botany",
       "Zoology",
       "Physical Chemistry",
       "Organic Chemistry",
-      "Mathematics",
-      "Maths",
-      "Math",
       "Biology",
       "English",
       "Total",
@@ -381,7 +380,7 @@ const UploadForm = () => {
       // Skip known required headers
       if (Object.values(headerMap).includes(header)) return;
 
-      // Check Attendance pattern: Attendance_March_P or Attendance_March_P
+      // Check Attendance pattern: Attendance_March_P or Attendance_March__P
       if (header.startsWith("Attendance_")) {
         const attMatch = header.match(
           /^Attendance_([A-Za-z]+)(_*)([PA]|Per|PER|per)$/i
@@ -431,7 +430,7 @@ const UploadForm = () => {
             expected:
               "Format should be: Attendance_MonthName_P, Attendance_MonthName_A, or Attendance_MonthName_Per",
             example:
-              "Attendance_March_P, Attendance_March_P, Attendance_March_Per",
+              "Attendance_Mar_P, Attendance_Mar_P, Attendance_Mar_Per",
           });
         }
         return;
@@ -877,6 +876,86 @@ const UploadForm = () => {
     });
 
     // ============================================
+    // STEP 2.5: VALIDATE COMPLETE FIELD SETS
+    // ============================================
+
+    // Validate complete attendance sets
+    attendanceMonths.forEach((month) => {
+      const requiredFields = [
+        `Attendance_${month}`, // Total held
+        `Attendance_${month}_P`, // Present
+        `Attendance_${month}_A`, // Absent
+        `Attendance_${month}_Per`, // Percentage
+      ];
+
+      const missingFields = requiredFields.filter(
+        (field) => !rawHeaders.includes(field)
+      );
+
+      if (missingFields.length > 0) {
+        criticalErrors.push({
+          type: "INCOMPLETE_ATTENDANCE_SET",
+          message: `❌ Incomplete attendance fields for ${month}`,
+          details: `Missing ${
+            missingFields.length
+          } required field(s): ${missingFields.join(", ")}`,
+          expected: `All 4 fields required: ${requiredFields.join(", ")}`,
+          fix: `Add the missing attendance columns for ${month}`,
+        });
+      }
+    });
+
+    // Validate complete result sets
+    resultDates.forEach((date) => {
+      const baseFields = [
+        `Result_${date}_Rank`,
+        `Result_${date}_Total`,
+        `Result_${date}_Highest_Marks`,
+      ];
+
+      // Check for at least one subject
+      const subjectFields = [
+        "Phy",
+        "Chem",
+        "Maths",
+        "Math",
+        "Bio",
+        "Physics",
+        "Chemistry",
+        "Mathematics",
+        "Biology",
+      ];
+      const hasSubject = subjectFields.some((subject) =>
+        rawHeaders.includes(`Result_${date}_${subject}`)
+      );
+
+      const missingFields = baseFields.filter(
+        (field) => !rawHeaders.includes(field)
+      );
+
+      if (missingFields.length > 0 || !hasSubject) {
+        const issues = [];
+        if (missingFields.length > 0) {
+          issues.push(`Missing: ${missingFields.join(", ")}`);
+        }
+        if (!hasSubject) {
+          issues.push(
+            `Missing at least one subject column (e.g., Result_${date}_Phy, Result_${date}_Chem, Result_${date}_Bio)`
+          );
+        }
+
+        criticalErrors.push({
+          type: "INCOMPLETE_RESULT_SET",
+          message: `❌ Incomplete result fields for ${date}`,
+          details: issues.join("; "),
+          expected: `Required: Rank, at least one subject, Total, and Highest_Marks`,
+          example: `Result_${date}_Rank, Result_${date}_Phy, Result_${date}_Chem, Result_${date}_Bio, Result_${date}_Total, Result_${date}_Highest_Marks`,
+          fix: `Add the missing result columns for ${date}`,
+        });
+      }
+    });
+
+    // ============================================
     // STEP 3: VALIDATE EACH ROW
     // ============================================
     const seenRollNos = new Set();
@@ -961,7 +1040,7 @@ const UploadForm = () => {
 
         // Check if attendance data exists for this month
         const hasAttendanceData =
-          (row[presentKey] !== undefined && row[presentKey] !== "") ||
+          (row[presentKey] !== undefined && row[presentKey] !== "" ) ||
           (row[absentKey] !== undefined && row[absentKey] !== "") ||
           (row[heldKey] !== undefined && row[heldKey] !== "");
 
@@ -1004,6 +1083,21 @@ const UploadForm = () => {
       // 3.4: VALIDATE RESULT DATA
       // ============================================
       resultDates.forEach((date) => {
+        const rankKey = `Result_${date}_Rank`;
+        const totalKey = `Result_${date}_Total`;
+        const highestKey = `Result_${date}_Highest_Marks`;
+
+        // Check if rank is ABS/ABSENT
+        const isAbsent =
+          row[rankKey]?.toString().toUpperCase() === "ABS" ||
+          row[rankKey]?.toString().toUpperCase() === "ABSENT" ||
+          row[rankKey]?.toString().trim() === "-";
+
+        if (isAbsent) {
+          // If marked as ABS, allow "-" in other fields
+          return; // Skip further validation for this date
+        }
+
         const possibleSubjects = [
           "Physics",
           "Phy",
@@ -1014,9 +1108,6 @@ const UploadForm = () => {
           "Biology",
           "Bio",
         ];
-        const totalKey = rawHeaders.find(
-          (h) => h === `Result_${date}_Total` || h === `Result_${date}_Tot`
-        );
 
         let hasAnySubjectData = false;
         possibleSubjects.forEach((subject) => {
@@ -1024,7 +1115,8 @@ const UploadForm = () => {
           if (
             rawHeaders.includes(key) &&
             row[key] !== undefined &&
-            row[key] !== ""
+            row[key] !== "" &&
+            row[key] !== "-"
           ) {
             hasAnySubjectData = true;
 
@@ -1035,7 +1127,7 @@ const UploadForm = () => {
                 type: "INVALID_MARKS",
                 message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
                 row: rowNum,
-                fix: "Marks must be a number",
+                fix: "Marks must be a number or '-' if absent",
               });
             }
           }
@@ -1044,8 +1136,9 @@ const UploadForm = () => {
         // If there's subject data but no total, warn
         if (
           hasAnySubjectData &&
-          totalKey &&
-          (row[totalKey] === undefined || row[totalKey] === "")
+          (row[totalKey] === undefined ||
+            row[totalKey] === "" ||
+            row[totalKey] === "-")
         ) {
           warnings.push({
             type: "MISSING_TOTAL",
