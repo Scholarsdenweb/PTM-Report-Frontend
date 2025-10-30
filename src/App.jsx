@@ -16,7 +16,7 @@ import { getCookie } from "../utils/getCookie";
 import FacultyDashboard from "./Components/FacultyDashboard";
 import RegenerateReport from "./Components/ReportViewer/RegenerateReport";
 import StudentReport from "./Components/ReportViewer/StudentReport";
-import BatchWiseStudentList from "./Components/ReportViewer/BatchwiseStudentList";
+import BatchWiseStudentList from "./Components/ReportViewer/BatchWiseStudentList";
 import ShowAllResultOfStudent from "./Components/ReportViewer/ShowAllResultOfStudent";
 import SendWhatsappMessage from "./Components/SendWhatsappMessage";
 
