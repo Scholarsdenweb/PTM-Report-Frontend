@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
+import { useEffect } from "react";
 
 // Normalize a string for matching (lowercase, remove non-alphanumerics)
 const normalize = (str) =>
@@ -43,6 +44,9 @@ const UploadForm = () => {
   const [file, setFile] = useState(null);
   const [ptmDate, setPtmDate] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+
+  const [showResponse, setShowResponse] = useState([]);
 
   const [allErrors, setAllErrors] = useState([]);
   const [allWarnings, setAllWarnings] = useState([]);
@@ -50,6 +54,10 @@ const UploadForm = () => {
   const [headers, setHeaders] = useState([]);
   const [invalidCells, setInvalidCells] = useState([]);
   const [validationSummary, setValidationSummary] = useState(null);
+
+  useEffect(() => {
+    console.log("SHowResponse", showResponse);
+  }, [showResponse]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -429,8 +437,7 @@ const UploadForm = () => {
             issue: "Invalid attendance column format",
             expected:
               "Format should be: Attendance_MonthName_P, Attendance_MonthName_A, or Attendance_MonthName_Per",
-            example:
-              "Attendance_Mar_P, Attendance_Mar_P, Attendance_Mar_Per",
+            example: "Attendance_Mar_P, Attendance_Mar_P, Attendance_Mar_Per",
           });
         }
         return;
@@ -477,8 +484,8 @@ const UploadForm = () => {
               header: header,
               issue: `Invalid date format: "${date}"`,
               expected:
-                "Date should be in format 'DD Month' (e.g., '07 Jul', '15 Mar') using short month names or 'YYYY' (e.g., '2024')",
-              example: "Result_07 Jul_Physics or Result_2024_Physics",
+                "Date should be in format 'DD Month' (e.g., '07 Jul', '15 Mar') using short month names",
+              example: "Result_07 Jul_Physics or Result_07 Jul_Physics",
               fix: "Use proper date format with space and SHORT month name (Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov, Dec)",
             });
             return;
@@ -530,7 +537,7 @@ const UploadForm = () => {
             issue: "Incomplete Objective Pattern column format",
             expected: "Format should be: Objective_Pattern_Date_Subject(Marks)",
             example:
-              "Objective_Pattern_07 July_Phy(10) or Objective_Pattern_2024_Phy(10)",
+              "Objective_Pattern_07 July_Phy(10) or Objective_Pattern_09 Dec_Phy(10)",
           });
           return;
         }
@@ -585,7 +592,7 @@ const UploadForm = () => {
             header: header,
             issue: `Invalid subject name: "${subject}"`,
             expected: `Valid subjects: ${VALID_OBJECTIVE_SUBJECTS.join(", ")}`,
-            example: "Objective_Pattern_2024_Phy(10)",
+            example: "Objective_Pattern_17 Jul_Phy(10)",
           });
           return;
         }
@@ -604,7 +611,7 @@ const UploadForm = () => {
             expected:
               "Format should be: Subjective_Pattern_Date_Subject(Marks)",
             example:
-              "Subjective_Pattern_07 July_Phy(14) or Subjective_Pattern_2024_Phy(14)",
+              "Subjective_Pattern_07 July_Phy(14) or Subjective_Pattern_17 Jul_Phy(14)",
           });
           return;
         }
@@ -674,7 +681,7 @@ const UploadForm = () => {
             issue: "Incomplete Board Result column format",
             expected: "Format should be: Board_Result_Date_Subject",
             example:
-              "Board_Result_07 July_Physics or Board_Result_2024_Physics",
+              "Board_Result_07 July_Physics or Board_Result_17 Jul_Physics",
           });
           return;
         }
@@ -1040,7 +1047,7 @@ const UploadForm = () => {
 
         // Check if attendance data exists for this month
         const hasAttendanceData =
-          (row[presentKey] !== undefined && row[presentKey] !== "" ) ||
+          (row[presentKey] !== undefined && row[presentKey] !== "") ||
           (row[absentKey] !== undefined && row[absentKey] !== "") ||
           (row[heldKey] !== undefined && row[heldKey] !== "");
 
@@ -1234,7 +1241,7 @@ const UploadForm = () => {
     // STEP 5: SET STATE AND RETURN
     // ============================================
     setInvalidCells(invalidCells);
-    setDataPreview(data.slice(0, 100));
+    setDataPreview(data.slice(0, 10));
     setHeaders(rawHeaders);
     setAllErrors(criticalErrors);
     setAllWarnings(warnings);
@@ -1287,6 +1294,8 @@ const UploadForm = () => {
       return;
     }
 
+    // alert("✅ File uploaded successfully!");
+
     if (allWarnings.length > 0) {
       const proceed = window.confirm(
         `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
@@ -1297,13 +1306,22 @@ const UploadForm = () => {
     const formData = new FormData();
     formData.append("csvFile", file);
     formData.append("ptmDate", ptmDate);
-    formData.append("type", "generate");
+    formData.append("type", "regenerate");
 
     try {
       setUploading(true);
       const res = await axios.post(`/ptm/upload`, formData);
-      alert("✅ File uploaded successfully!");
-      console.log("Upload response:", res.data);
+      // alert("✅ File uploaded successfully!");
+      setUploading(false);
+      setDataPreview([]);
+      setPtmDate("");
+      setAllErrors([]);
+      setAllWarnings([]);
+      setInvalidCells([]);
+      setShowResponse(res.data.results);
+      setValidationSummary(null);
+      console.log("Upload response:fron on Submit", res.data);
+
       // Handle success - you can add more logic here
     } catch (err) {
       console.error("Upload error:", err);
@@ -1317,14 +1335,37 @@ const UploadForm = () => {
     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
       <Breadcrumb />
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full">
-        <h2 className="text-2xl font-semibold text-slate-800 mb-2 text-center">
-          📤 PTM Report Uploader
-        </h2>
-        <p className="text-slate-500 text-sm mb-6 text-center">
-          Supported formats:{" "}
-          <code className="bg-slate-100 px-2 py-1 rounded">.xlsx</code>,{" "}
-          <code className="bg-slate-100 px-2 py-1 rounded">.csv</code>
-        </p>
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex-1">
+            <h2 className="text-2xl font-semibold text-slate-800 mb-2 text-center">
+              📤 PTM Report Uploader
+            </h2>
+            <p className="text-slate-500 text-sm text-center">
+              Supported formats:{" "}
+              <code className="bg-slate-100 px-2 py-1 rounded">.xlsx</code>,{" "}
+              <code className="bg-slate-100 px-2 py-1 rounded">.csv</code>
+            </p>
+          </div>
+          <button
+            onClick={() => setShowRulesModal(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition font-medium text-sm shadow-md flex items-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            File Rules
+          </button>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -1443,101 +1484,9 @@ const UploadForm = () => {
                             {err.details}
                           </p>
                         )}
-                        {err.details && Array.isArray(err.details) && (
-                          <ul className="mt-2 space-y-1">
-                            {err.details.map((detail, i) => (
-                              <li key={i} className="text-xs text-red-700">
-                                •{" "}
-                                <span className="font-medium">
-                                  {detail.expectedNames}
-                                </span>
-                                <br />
-                                <span className="ml-4 text-gray-600">
-                                  {detail.suggestion}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {err.expected && (
-                          <p className="text-xs text-gray-700 mt-1">
-                            <span className="font-semibold">Expected:</span>{" "}
-                            {err.expected}
-                          </p>
-                        )}
-                        {err.example && (
-                          <p className="text-xs text-blue-700 mt-1">
-                            <span className="font-semibold">Example:</span>{" "}
-                            {err.example}
-                          </p>
-                        )}
-                        {err.row && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            📍 Location: Row {err.row}
-                            {err.column && `, Column "${err.column}"`}
-                          </p>
-                        )}
                         {err.fix && (
                           <p className="text-xs text-green-700 mt-1 italic bg-green-50 p-2 rounded">
                             💡 Fix: {err.fix}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Display Warnings */}
-        {allWarnings.length > 0 && (
-          <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-yellow-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className="text-sm font-semibold text-yellow-800 mb-2">
-                  ⚠️ Warnings ({allWarnings.length})
-                </h3>
-                <p className="text-xs text-yellow-700 mb-3">
-                  These issues won't block the upload but should be reviewed.
-                </p>
-                <div className="max-h-64 overflow-y-auto pr-2">
-                  <div className="space-y-2">
-                    {allWarnings.map((warn, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white rounded p-3 shadow-sm border-l-2 border-yellow-400"
-                      >
-                        <p className="font-medium text-yellow-900 text-sm">
-                          {warn.message}
-                        </p>
-                        {warn.details && (
-                          <p className="text-xs text-yellow-700 mt-1">
-                            {warn.details}
-                          </p>
-                        )}
-                        {warn.row && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            📍 Location: Row {warn.row}
-                          </p>
-                        )}
-                        {warn.fix && (
-                          <p className="text-xs text-blue-700 mt-1 italic">
-                            💡 Suggestion: {warn.fix}
                           </p>
                         )}
                       </div>
@@ -1553,7 +1502,7 @@ const UploadForm = () => {
         {dataPreview.length > 0 && (
           <div className="mt-8">
             <h4 className="font-semibold text-slate-800 mb-3">
-              📋 Data Preview (First 100 rows)
+              📋 Data Preview (First 10 rows)
             </h4>
             <div className="overflow-auto max-h-[400px] border border-gray-300 rounded-lg shadow-sm">
               <table className="min-w-full text-left text-xs">
@@ -1579,7 +1528,7 @@ const UploadForm = () => {
                       className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
                     >
                       <td className="px-3 py-2 border-b border-gray-200 text-gray-500 font-medium">
-                        {i + 2}
+                        {i + 1}
                       </td>
                       {headers.map((h, j) => (
                         <td
@@ -1601,6 +1550,657 @@ const UploadForm = () => {
           </div>
         )}
       </div>
+
+      {showResponse.length > 0 && (
+        // console.log(
+        //   "showResponse from uploadForm",
+        //   showResponse
+        // )
+        <div className="p-5">
+          {showResponse.map((report) => (
+            <div className=" shadow-sm flex flex-col p-5  ">
+              <div>Name: {report.name}</div>
+              <div>Roll No: {report.rollNo} </div>
+              <div>Uploaded Url: {report.cloudinaryUrl.secure_url}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rules Modal */}
+      {showRulesModal && (
+        <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold">📋 File Formatting Rules</h3>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-6 space-y-6">
+              {/* Required Columns */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-sm">
+                    REQUIRED
+                  </span>
+                  Required Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-semibold text-sm">Name</p>
+                      <p className="text-xs text-gray-600">
+                        Accepted: Name, NAME, Student Name
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Roll No</p>
+                      <p className="text-xs text-gray-600">
+                        Accepted: ROLL NO, Roll No, Roll Number
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Batch</p>
+                      <p className="text-xs text-gray-600">
+                        Accepted: Batch, BATCH
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Strength</p>
+                      <p className="text-xs text-gray-600">
+                        Accepted: Strength, STRENGTH
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Optional Contact Columns */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-sm">
+                    OPTIONAL
+                  </span>
+                  Contact Information
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <ul className="text-sm space-y-1 text-gray-700">
+                    <li>
+                      • <strong>Mother Name:</strong> M_N, Mother Name,
+                      MotherName
+                    </li>
+                    <li>
+                      • <strong>Father Name:</strong> F_N, Father Name,
+                      FatherName
+                    </li>
+                    <li>
+                      • <strong>Student Contact:</strong> Students Contact No.,
+                      Student Contact No., StudentContactNo
+                    </li>
+                    <li>
+                      • <strong>Father Contact:</strong> Father Contact No.,
+                      Father Contact Number, FatherContactNo
+                    </li>
+                    <li>
+                      • <strong>Mother Contact:</strong> Mother Contact No.,
+                      Mother Contact Number, MotherContactNo
+                    </li>
+                  </ul>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  📅 Valid Month Names
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="font-semibold">
+                    Valid Month Names (SHORT NAMES ONLY):
+                  </p>
+                  <p className="text-gray-600">
+                    Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov, Dec
+                  </p>
+                </div>
+              </section>
+
+              {/* Attendance Columns */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Attendance Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Attendance_MonthName_Field
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold mt-3">
+                      Required Fields for Each Month:
+                    </p>
+                    <ul className="list-disc list-inside text-gray-700 space-y-1">
+                      <li>
+                        <code>Attendance_Mar</code> - Total classes held
+                      </li>
+                      <li>
+                        <code>Attendance_Mar_P</code> - Present days
+                      </li>
+                      <li>
+                        <code>Attendance_Mar_A</code> - Absent days
+                      </li>
+                      <li>
+                        <code>Attendance_Mar_Per</code> - Attendance percentage
+                      </li>
+                    </ul>
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Attendance_Mar_P, Attendance_Jan_A,
+                      Attendance_Apr_Per
+                    </p>
+                    <p className="text-red-600">
+                      ✗ Invalid: Attendance_March_P, Attendance_January_A (no
+                      full month names)
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Result Columns */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Result Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Result_Date_Subject
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold">Date Format:</p>
+                    <p className="text-gray-600">
+                      • "DD Month" (e.g., 07 Jul, 15 Mar) - Use SHORT month
+                      names
+                    </p>
+                    {/* <p className="text-gray-600">• "YYYY" (e.g., 2024)</p> */}
+
+                    <p className="font-semibold mt-3">Valid Subjects:</p>
+                    <p className="text-gray-600">
+                      Physics, Phy, Chemistry, Chem, Mathematics, Maths, Math,
+                      Biology, Bio, Total, Tot, Rank, Highest_Marks, High
+                    </p>
+
+                    <p className="font-semibold mt-3">
+                      Required for Each Date:
+                    </p>
+                    <ul className="list-disc list-inside text-gray-700">
+                      <li>At least one subject column</li>
+                      <li>Result_Date_Total</li>
+                      <li>Result_Date_Rank</li>
+                      <li>Result_Date_Highest_Marks</li>
+                    </ul>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Result_07 Jul_Physics, Result_05 Sept_Chemistry
+                    </p>
+                    <p className="text-red-600">
+                      ✗ Invalid: Result_07July_Physics (missing space),
+                      Result_07 July_Bio1 (invalid subject)
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Objective Pattern */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Objective Pattern Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Objective_Pattern_Date_Subject(Marks)
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold">Valid Subjects:</p>
+                    <p className="text-gray-600">
+                      Phy(10), Chem(10), Bio(10), Math(25), Maths(25), Eng(15),
+                      Eng(10), SST(30), Total(100), Total(120), Total, Rank,
+                      Highest_Marks
+                    </p>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Objective_Pattern_07 Jul_Phy(10),
+                      Objective_Pattern_21 Jan_Math(25)
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Subjective Pattern */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Subjective Pattern Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Subjective_Pattern_Date_Subject(Marks)
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold">Valid Subjects:</p>
+                    <p className="text-gray-600">
+                      Phy(14), Chem(13), Bio(13), Maths(20), Math(20),
+                      Total(40), Rank, Highest_Marks
+                    </p>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Subjective_Pattern_07 Jul_Phy(14),
+                      Subjective_Pattern_15 Jul_Chem(13)
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Board Result */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Board Result Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Board_Result_Date_Subject
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold">Valid Subjects:</p>
+                    <p className="text-gray-600">
+                      Physics, Chemistry, Mathematics, Biology, English, Hindi,
+                      Computer Science, Rank, Highest marks
+                    </p>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Board_Result_07 Jul_Physics,
+                      Board_Result_06 Jul_Mathematics
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* JEE Advanced */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  JEE Advanced Result Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    JEE Advanced has multiple column formats:
+                  </p>
+
+                  <div className="space-y-4 text-sm">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="font-semibold text-indigo-800 mb-2">
+                        📝 Paper 1 Columns:
+                      </p>
+                      <p className="text-xs mb-1">
+                        Format:{" "}
+                        <code className="bg-gray-100 px-2 py-1 rounded">
+                          JEE_ADV_Result_Paper 1_Result_Date_Subject
+                        </code>
+                      </p>
+                      <p className="text-gray-600 mb-2">
+                        Valid Subjects:{" "}
+                        <strong>Phy, Chem, Maths, Total_Marks</strong>
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1">
+                        <li>JEE_ADV_Result_Paper 1_Result_07 Jul_Phy</li>
+                        <li>JEE_ADV_Result_Paper 1_Result_07 Jul_Chem</li>
+                        <li>JEE_ADV_Result_Paper 1_Result_07 Jul_Maths</li>
+                        <li>
+                          JEE_ADV_Result_Paper 1_Result_07 Jul_Total_Marks
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="font-semibold text-indigo-800 mb-2">
+                        📝 Paper 2 Columns:
+                      </p>
+                      <p className="text-xs mb-1">
+                        Format:{" "}
+                        <code className="bg-gray-100 px-2 py-1 rounded">
+                          JEE_ADV_Result_Paper 2_Result_Date_Subject
+                        </code>
+                      </p>
+                      <p className="text-gray-600 mb-2">
+                        Valid Subjects:{" "}
+                        <strong>Phy, Chem, Maths, Total_Marks</strong>
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1">
+                        <li>JEE_ADV_Result_Paper 2_Result_07 Jul_Phy</li>
+                        <li>JEE_ADV_Result_Paper 2_Result_07 Jul_Chem</li>
+                        <li>JEE_ADV_Result_Paper 2_Result_07 Jul_Maths</li>
+                        <li>
+                          JEE_ADV_Result_Paper 2_Result_07 Jul_Total_Marks
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="font-semibold text-indigo-800 mb-2">
+                        📝 Common Columns:
+                      </p>
+                      <p className="text-xs mb-1">
+                        Format:{" "}
+                        <code className="bg-gray-100 px-2 py-1 rounded">
+                          JEE_ADV_Result_Date_Field
+                        </code>
+                      </p>
+                      <p className="text-gray-600 mb-2">
+                        Valid Fields:{" "}
+                        <strong>Grand_Total, Rank, High, Highest_Marks</strong>
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1">
+                        <li>JEE_ADV_Result_07 Jul_Grand_Total</li>
+                        <li>JEE_ADV_Result_07 Jul_Rank</li>
+                        <li>JEE_ADV_Result_07 Jul_High (or Highest_Marks)</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-300">
+                      <p className="font-semibold text-yellow-800 mb-2">
+                        ⚠️ Important Requirements:
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1 text-xs">
+                        <li>
+                          <strong>All Paper 1 columns are required</strong>{" "}
+                          (Phy, Chem, Maths, Total_Marks)
+                        </li>
+                        <li>
+                          <strong>All Paper 2 columns are required</strong>{" "}
+                          (Phy, Chem, Maths, Total_Marks)
+                        </li>
+                        <li>
+                          <strong>Common columns required:</strong> Grand_Total,
+                          Rank, and either High or Highest_Marks
+                        </li>
+                        <li>
+                          Date format must be "DD Month" (e.g., 07 Jul) with
+                          SHORT month names or "YYYY"
+                        </li>
+                        <li>Note the space in "Paper 1" and "Paper 2"</li>
+                      </ul>
+                    </div>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Complete Example for one JEE Advanced exam on 07 Jul:
+                    </p>
+                    <div className="bg-blue-50 rounded p-2 mt-1 text-xs">
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 1_Result_07 Jul_Phy
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 1_Result_07 Jul_Chem
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 1_Result_07 Jul_Maths
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 1_Result_07 Jul_Total_Marks
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 2_Result_07 Jul_Phy
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 2_Result_07 Jul_Chem
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 2_Result_07 Jul_Maths
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_Paper 2_Result_07 Jul_Total_Marks
+                      </p>
+                      <p className="font-mono">
+                        JEE_ADV_Result_07 Jul_Grand_Total
+                      </p>
+                      <p className="font-mono">JEE_ADV_Result_07 Jul_Rank</p>
+                      <p className="font-mono">JEE_ADV_Result_07 Jul_High</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Feedback Columns */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  Feedback Columns
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Format:{" "}
+                    <code className="bg-white px-2 py-1 rounded">
+                      Subject_Field
+                    </code>
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold">Valid Feedback Fields:</p>
+                    <p className="text-gray-600">
+                      CR (Class Response), D (Discipline), CA (Class Activity),
+                      HW (Homework)
+                    </p>
+
+                    <p className="font-semibold mt-3">Valid Subjects:</p>
+                    <p className="text-gray-600">
+                      Physics, Chemistry, Mathematics, Maths, Math, Botany,
+                      Zoology, Physical Chemistry, Organic Chemistry, Biology,
+                      English, Total
+                    </p>
+
+                    <p className="text-blue-600 mt-3">
+                      ✓ Example: Physics_CR, Chemistry_D, Mathematics_CA,
+                      Biology_HW
+                    </p>
+                    <p className="text-red-600">
+                      ✗ Invalid: Physics_OD, Chemistry_XYZ (invalid feedback
+                      fields)
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* General Rules */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  ⚠️ General Rules
+                </h4>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <ul className="text-sm space-y-2 text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">1.</span>
+                      <span>
+                        <strong>All dates must use SHORT month names:</strong>{" "}
+                        Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov,
+                        Dec (never use full names like January, February, etc.)
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">2.</span>
+                      <span>
+                        <strong>Date format must include space:</strong> "07
+                        Jul" not "07Jul" or "07_Jul"
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">3.</span>
+                      <span>
+                        <strong>Roll numbers must be unique:</strong> No
+                        duplicate roll numbers allowed
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">4.</span>
+                      <span>
+                        <strong>Required fields cannot be empty:</strong> Name,
+                        Roll No, Batch, and Strength must have values for all
+                        students
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">5.</span>
+                      <span>
+                        <strong>Complete field sets required:</strong> If you
+                        include attendance for a month, all 4 fields must be
+                        present (Total, P, A, Per). For JEE Advanced, all Paper
+                        1, Paper 2, and common fields must be present.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">6.</span>
+                      <span>
+                        <strong>Valid days and months:</strong> Days must be
+                        1-31, months must match actual calendar (e.g., Feb max
+                        29, Apr max 30)
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">7.</span>
+                      <span>
+                        <strong>Subject names must match exactly:</strong> Use
+                        only the subjects listed in each category
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">8.</span>
+                      <span>
+                        <strong>Empty rows will be skipped:</strong> Rows with
+                        all empty cells are ignored during processing
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">9.</span>
+                      <span>
+                        <strong>Use "-" or "ABS" for absent students:</strong>{" "}
+                        For students absent from exams, use "-" or "ABS" in
+                        marks fields
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-bold">10.</span>
+                      <span>
+                        <strong>File size limit:</strong> Maximum file size is
+                        50MB
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </section>
+
+              {/* Quick Reference */}
+              <section>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                  📝 Quick Reference Examples
+                </h4>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-semibold text-green-800">
+                        ✓ Correct Examples:
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                        <li>Attendance_Mar_P (March Present)</li>
+                        <li>
+                          Result_07 Jul_Physics (Result on July 7th for Physics)
+                        </li>
+                        <li>
+                          Objective_Pattern_09 Jun_Phy(10) (Objective pattern
+                          2024, Physics 10 marks)
+                        </li>
+                        <li>
+                          Board_Result_15 Mar_Mathematics (Board result March
+                          15th, Mathematics)
+                        </li>
+                        <li>
+                          JEE_ADV_Result_Paper 1_Result_07 Jul_Phy (JEE Advanced
+                          Paper 1 Physics)
+                        </li>
+                        <li>
+                          JEE_ADV_Result_07 Jul_Grand_Total (JEE Advanced Grand
+                          Total)
+                        </li>
+                        <li>Physics_CR (Physics Class Response feedback)</li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="font-semibold text-red-800">
+                        ✗ Incorrect Examples:
+                      </p>
+                      <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                        <li>Attendance_March_P (use "Mar" not "March")</li>
+                        <li>
+                          Result_07July_Physics (missing space: should be "07
+                          Jul")
+                        </li>
+                        <li>
+                          Result_07 July_Bio1 (invalid subject: use "Bio")
+                        </li>
+                        <li>
+                          Objective_Pattern_32 Jan_Phy(10) (invalid day: 32)
+                        </li>
+                        <li>
+                          JEE_ADV_Result_Paper1_Result_07 Jul_Phy (missing space
+                          in "Paper 1")
+                        </li>
+                        <li>
+                          JEE_ADV_Result_Paper 1_Result_07July_Phy (missing
+                          space in date)
+                        </li>
+                        <li>
+                          Physics_OD (invalid feedback field: use CR, D, CA, or
+                          HW)
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+              <button
+                onClick={() => setShowRulesModal(false)}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
