@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import axios from "../../api/axios";
+import axios from "../../api/axios"
 import Breadcrumb from "../../utils/Breadcrumb";
-import { useEffect } from "react";
 
 // Normalize a string for matching (lowercase, remove non-alphanumerics)
 const normalize = (str) =>
@@ -46,8 +45,6 @@ const UploadForm = () => {
   const [uploading, setUploading] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
 
-  const [showResponse, setShowResponse] = useState([]);
-
   const [allErrors, setAllErrors] = useState([]);
   const [allWarnings, setAllWarnings] = useState([]);
   const [dataPreview, setDataPreview] = useState([]);
@@ -55,9 +52,17 @@ const UploadForm = () => {
   const [invalidCells, setInvalidCells] = useState([]);
   const [validationSummary, setValidationSummary] = useState(null);
 
-  useEffect(() => {
-    console.log("SHowResponse", showResponse);
-  }, [showResponse]);
+  // Progress tracking states
+  const [progress, setProgress] = useState({
+    show: false,
+    percentage: 0,
+    current: 0,
+    total: 0,
+    message: "",
+    status: "idle", // idle, processing, complete, error
+  });
+  const [progressLogs, setProgressLogs] = useState([]);
+  const [showProgressModal, setShowProgressModal] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -1271,11 +1276,35 @@ const UploadForm = () => {
       },
     };
   };
-
   const isCellInvalid = (rowIndex, header) =>
     invalidCells.some((c) => c.row === rowIndex && c.field === header);
 
-  const handleSubmit = async (e) => {
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   if (!file) {
+  //     alert("Please select a file.");
+  //     return;
+  //   }
+  //   if (!ptmDate) {
+  //     alert("Please select PTM date.");
+  //     return;
+  //   }
+
+  //   if (allErrors.length > 0) {
+  //     alert(
+  //       "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
+  //     );
+  //     return;
+  //   }
+
+  //   alert("✅ File uploaded successfully!");
+  // };
+
+
+
+
+ const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!file) {
@@ -1318,7 +1347,7 @@ const UploadForm = () => {
       setAllErrors([]);
       setAllWarnings([]);
       setInvalidCells([]);
-      setShowResponse(res.data.results);
+      // setShowResponse(res.data.results);
       setValidationSummary(null);
       console.log("Upload response:fron on Submit", res.data);
 
@@ -1331,9 +1360,15 @@ const UploadForm = () => {
     }
   };
 
+
+
+
+
+
+
   return (
     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
-      <Breadcrumb />
+      <Breadcrumb/>
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full">
         <div className="flex justify-between items-center mb-4">
           <div className="flex-1">
@@ -1502,7 +1537,7 @@ const UploadForm = () => {
         {dataPreview.length > 0 && (
           <div className="mt-8">
             <h4 className="font-semibold text-slate-800 mb-3">
-              📋 Data Preview (First 10 rows)
+              📋 Data Preview (First 100 rows)
             </h4>
             <div className="overflow-auto max-h-[400px] border border-gray-300 rounded-lg shadow-sm">
               <table className="min-w-full text-left text-xs">
@@ -1528,7 +1563,7 @@ const UploadForm = () => {
                       className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
                     >
                       <td className="px-3 py-2 border-b border-gray-200 text-gray-500 font-medium">
-                        {i + 1}
+                        {i + 2}
                       </td>
                       {headers.map((h, j) => (
                         <td
@@ -1551,25 +1586,9 @@ const UploadForm = () => {
         )}
       </div>
 
-      {showResponse.length > 0 && (
-        // console.log(
-        //   "showResponse from uploadForm",
-        //   showResponse
-        // )
-        <div className="p-5">
-          {showResponse.map((report) => (
-            <div className=" shadow-sm flex flex-col p-5  ">
-              <div>Name: {report.name}</div>
-              <div>Roll No: {report.rollNo} </div>
-              <div>Uploaded Url: {report.cloudinaryUrl.secure_url}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Rules Modal */}
       {showRulesModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
               <h3 className="text-xl font-bold">📋 File Formatting Rules</h3>
@@ -1613,7 +1632,7 @@ const UploadForm = () => {
                     <div>
                       <p className="font-semibold text-sm">Roll No</p>
                       <p className="text-xs text-gray-600">
-                        Accepted: ROLL NO, Roll No, Roll Number
+                        Accepted: ROLL NO, Roll No, Roll Number, ROLLNO, RollNo
                       </p>
                     </div>
                     <div>
@@ -1666,20 +1685,6 @@ const UploadForm = () => {
                 </div>
               </section>
 
-              <section>
-                <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                  📅 Valid Month Names
-                </h4>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="font-semibold">
-                    Valid Month Names (SHORT NAMES ONLY):
-                  </p>
-                  <p className="text-gray-600">
-                    Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov, Dec
-                  </p>
-                </div>
-              </section>
-
               {/* Attendance Columns */}
               <section>
                 <h4 className="text-lg font-semibold text-gray-800 mb-3">
@@ -1693,6 +1698,13 @@ const UploadForm = () => {
                     </code>
                   </p>
                   <div className="space-y-2 text-sm">
+                    <p className="font-semibold">
+                      Valid Month Names (SHORT NAMES ONLY):
+                    </p>
+                    <p className="text-gray-600">
+                      Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sept, Oct, Nov,
+                      Dec
+                    </p>
                     <p className="font-semibold mt-3">
                       Required Fields for Each Month:
                     </p>
@@ -1740,7 +1752,7 @@ const UploadForm = () => {
                       • "DD Month" (e.g., 07 Jul, 15 Mar) - Use SHORT month
                       names
                     </p>
-                    {/* <p className="text-gray-600">• "YYYY" (e.g., 2024)</p> */}
+                    <p className="text-gray-600">• "YYYY" (e.g., 2024)</p>
 
                     <p className="font-semibold mt-3">Valid Subjects:</p>
                     <p className="text-gray-600">
@@ -1759,7 +1771,7 @@ const UploadForm = () => {
                     </ul>
 
                     <p className="text-blue-600 mt-3">
-                      ✓ Example: Result_07 Jul_Physics, Result_05 Sept_Chemistry
+                      ✓ Example: Result_07 Jul_Physics, Result_2024_Chemistry
                     </p>
                     <p className="text-red-600">
                       ✗ Invalid: Result_07July_Physics (missing space),
@@ -1791,7 +1803,7 @@ const UploadForm = () => {
 
                     <p className="text-blue-600 mt-3">
                       ✓ Example: Objective_Pattern_07 Jul_Phy(10),
-                      Objective_Pattern_21 Jan_Math(25)
+                      Objective_Pattern_2024_Math(25)
                     </p>
                   </div>
                 </div>
@@ -1818,7 +1830,7 @@ const UploadForm = () => {
 
                     <p className="text-blue-600 mt-3">
                       ✓ Example: Subjective_Pattern_07 Jul_Phy(14),
-                      Subjective_Pattern_15 Jul_Chem(13)
+                      Subjective_Pattern_2024_Chem(13)
                     </p>
                   </div>
                 </div>
@@ -1845,7 +1857,7 @@ const UploadForm = () => {
 
                     <p className="text-blue-600 mt-3">
                       ✓ Example: Board_Result_07 Jul_Physics,
-                      Board_Result_06 Jul_Mathematics
+                      Board_Result_2024_Mathematics
                     </p>
                   </div>
                 </div>
@@ -2136,7 +2148,7 @@ const UploadForm = () => {
                           Result_07 Jul_Physics (Result on July 7th for Physics)
                         </li>
                         <li>
-                          Objective_Pattern_09 Jun_Phy(10) (Objective pattern
+                          Objective_Pattern_2024_Phy(10) (Objective pattern
                           2024, Physics 10 marks)
                         </li>
                         <li>
@@ -2198,6 +2210,202 @@ const UploadForm = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Modal */}
+      {showProgressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold">
+                📊 Report Generation Progress
+              </h3>
+              {progress.status === "complete" && (
+                <button
+                  onClick={() => setShowProgressModal(false)}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {progress.current} / {progress.total} Students
+                  </span>
+                  <span className="text-sm font-bold text-blue-600">
+                    {progress.percentage}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      progress.status === "complete"
+                        ? "bg-green-500"
+                        : progress.status === "error"
+                        ? "bg-red-500"
+                        : "bg-blue-500"
+                    }`}
+                    style={{ width: `${progress.percentage}%` }}
+                  />
+                </div>
+                <p className="text-sm text-gray-600 text-center">
+                  {progress.message}
+                </p>
+              </div>
+
+              {/* Progress Stats */}
+              {progress.total > 0 && (
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-blue-600">
+                      {progress.total}
+                    </p>
+                    <p className="text-xs text-gray-600">Total</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {
+                        progressLogs.filter((log) => log.type === "success")
+                          .length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-600">Success</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {
+                        progressLogs.filter((log) => log.type === "error")
+                          .length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-600">Errors</p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {
+                        progressLogs.filter((log) => log.type === "skipped")
+                          .length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-600">Skipped</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Activity Log */}
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <span>Activity Log</span>
+                  {progress.status === "processing" && (
+                    <svg
+                      className="animate-spin h-4 w-4 text-blue-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  )}
+                </h4>
+                <div className="flex-1 overflow-y-auto bg-gray-50 rounded-lg p-4 space-y-2 max-h-60">
+                  {progressLogs.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center">
+                      Waiting for updates...
+                    </p>
+                  ) : (
+                    progressLogs
+                      .slice()
+                      .reverse()
+                      .map((log, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg text-sm border-l-4 ${
+                            log.type === "success"
+                              ? "bg-green-50 border-green-500"
+                              : log.type === "error"
+                              ? "bg-red-50 border-red-500"
+                              : log.type === "skipped"
+                              ? "bg-yellow-50 border-yellow-500"
+                              : log.type === "complete"
+                              ? "bg-blue-50 border-blue-500"
+                              : "bg-gray-100 border-gray-400"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-800">
+                                {log.message}
+                              </p>
+                              {log.studentName && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {log.studentName} ({log.rollNo})
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {log.timestamp}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            {progress.status === "complete" && (
+              <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                <button
+                  onClick={() => {
+                    setShowProgressModal(false);
+                    setProgress({
+                      show: false,
+                      percentage: 0,
+                      current: 0,
+                      total: 0,
+                      message: "",
+                      status: "idle",
+                    });
+                    setProgressLogs([]);
+                  }}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
