@@ -92,7 +92,7 @@ function App() {
               allowedRoles={["Admin"]}
             >
               <SidebarLayout>
-                <UploadForm />
+                <UploadForm  />
               </SidebarLayout>
             </ProtectedRoute>
           }
@@ -122,7 +122,7 @@ function App() {
               allowedRoles={["Admin"]}
             >
               <SidebarLayout>
-                <RegenerateReport />
+                <UploadForm type="regenerate" />
               </SidebarLayout>
             </ProtectedRoute>
           }

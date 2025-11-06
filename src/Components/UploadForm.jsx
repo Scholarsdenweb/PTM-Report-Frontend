@@ -41,7 +41,7 @@ const HEADER_ALIASES = {
 // Define which normalized keys are *required*
 const REQUIRED_NORMALIZED = ["name", "rollno", "batch", "strength"];
 
-const UploadForm = () => {
+const UploadForm = ({type = "generate"}) => {
   const [file, setFile] = useState(null);
   const [ptmDate, setPtmDate] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -1385,7 +1385,7 @@ const handleSubmit = async (e) => {
   const formData = new FormData();
   formData.append("csvFile", file);
   formData.append("ptmDate", ptmDate);
-  formData.append("type", "generate");
+  formData.append("type", type);
 
   const startTime = Date.now();
 
@@ -1426,6 +1426,7 @@ const handleSubmit = async (e) => {
       
       if (done) {
         console.log('Stream complete');
+        
         break;
       }
 
