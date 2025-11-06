@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import axios from "../../api/axios"
+import axios from "../../api/axios";
 import Breadcrumb from "../../utils/Breadcrumb";
-import { useProgress } from '../hooks';
-
+import { useProgress } from "../hooks";
 
 // Normalize a string for matching (lowercase, remove non-alphanumerics)
 const normalize = (str) =>
@@ -41,7 +40,7 @@ const HEADER_ALIASES = {
 // Define which normalized keys are *required*
 const REQUIRED_NORMALIZED = ["name", "rollno", "batch", "strength"];
 
-const UploadForm = ({type = "generate"}) => {
+const UploadForm = ({ type = "generate" }) => {
   const [file, setFile] = useState(null);
   const [ptmDate, setPtmDate] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -64,16 +63,9 @@ const UploadForm = ({type = "generate"}) => {
   //   status: "idle", // idle, processing, complete, error
   // });
 
-
-
   // const [progressLogs, setProgressLogs] = useState([]);
 
   const { updateProgress, addLog, setFinalSummaryData } = useProgress();
-
-
-
-
-  
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -1290,235 +1282,230 @@ const UploadForm = ({type = "generate"}) => {
   const isCellInvalid = (rowIndex, header) =>
     invalidCells.some((c) => c.row === rowIndex && c.field === header);
 
+  //  const handleSubmit = async (e) => {
+  //     e.preventDefault();
 
+  //     if (!file) {
+  //       alert("Please select a file.");
+  //       return;
+  //     }
+  //     if (!ptmDate) {
+  //       alert("Please select PTM date.");
+  //       return;
+  //     }
 
-//  const handleSubmit = async (e) => {
-//     e.preventDefault();
+  //     if (allErrors.length > 0) {
+  //       alert(
+  //         "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
+  //       );
+  //       return;
+  //     }
 
-//     if (!file) {
-//       alert("Please select a file.");
-//       return;
-//     }
-//     if (!ptmDate) {
-//       alert("Please select PTM date.");
-//       return;
-//     }
+  //     // alert("✅ File uploaded successfully!");
 
-//     if (allErrors.length > 0) {
-//       alert(
-//         "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
-//       );
-//       return;
-//     }
+  //     if (allWarnings.length > 0) {
+  //       const proceed = window.confirm(
+  //         `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
+  //       );
+  //       if (!proceed) return;
+  //     }
 
-//     // alert("✅ File uploaded successfully!");
+  //     const formData = new FormData();
+  //     formData.append("csvFile", file);
+  //     formData.append("ptmDate", ptmDate);
+  //     formData.append("type", "regenerate");
 
-//     if (allWarnings.length > 0) {
-//       const proceed = window.confirm(
-//         `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
-//       );
-//       if (!proceed) return;
-//     }
+  //     try {
+  //       setUploading(true);
+  //       const res = await axios.post(`/ptm/upload`, formData);
+  //       // alert("✅ File uploaded successfully!");
+  //       setUploading(false);
+  //       setDataPreview([]);
+  //       setPtmDate("");
+  //       setAllErrors([]);
+  //       setAllWarnings([]);
+  //       setInvalidCells([]);
+  //       // setShowResponse(res.data.results);
+  //       setValidationSummary(null);
+  //       console.log("Upload response:fron on Submit", res.data);
 
-//     const formData = new FormData();
-//     formData.append("csvFile", file);
-//     formData.append("ptmDate", ptmDate);
-//     formData.append("type", "regenerate");
+  //       // Handle success - you can add more logic here
+  //     } catch (err) {
+  //       console.error("Upload error:", err);
+  //       alert("❌ Error uploading file");
+  //     } finally {
+  //       setUploading(false);
+  //     }
+  //   };
 
-//     try {
-//       setUploading(true);
-//       const res = await axios.post(`/ptm/upload`, formData);
-//       // alert("✅ File uploaded successfully!");
-//       setUploading(false);
-//       setDataPreview([]);
-//       setPtmDate("");
-//       setAllErrors([]);
-//       setAllWarnings([]);
-//       setInvalidCells([]);
-//       // setShowResponse(res.data.results);
-//       setValidationSummary(null);
-//       console.log("Upload response:fron on Submit", res.data);
+  // Add this function in your UploadForm component
 
-//       // Handle success - you can add more logic here
-//     } catch (err) {
-//       console.error("Upload error:", err);
-//       alert("❌ Error uploading file");
-//     } finally {
-//       setUploading(false);
-//     }
-//   };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-
-
-
-
-
-
-
-
-// Add this function in your UploadForm component
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!file) {
-    alert("Please select a file.");
-    return;
-  }
-  if (!ptmDate) {
-    alert("Please select PTM date.");
-    return;
-  }
-
-  if (allErrors.length > 0) {
-    alert("❌ Cannot submit due to validation errors. Please fix the errors shown below and try again.");
-    return;
-  }
-
-  if (allWarnings.length > 0) {
-    const proceed = window.confirm(
-      `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
-    );
-    if (!proceed) return;
-  }
-
-  const formData = new FormData();
-  formData.append("csvFile", file);
-  formData.append("ptmDate", ptmDate);
-  formData.append("type", type);
-
-  const startTime = Date.now();
-
-  try {
-    setUploading(true);
-    
-    // Show progress modal immediately
-    updateProgress({
-      show: true,
-      percentage: 0,
-      current: 0,
-      total: 0,
-      message: "Initializing...",
-      status: "processing",
-    });
-    addLog([]); // Clear previous logs
-
-    const response = await fetch(`${axios.defaults.baseURL}/ptm/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!file) {
+      alert("Please select a file.");
+      return;
+    }
+    if (!ptmDate) {
+      alert("Please select PTM date.");
+      return;
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    if (allErrors.length > 0) {
+      alert(
+        "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
+      );
+      return;
+    }
 
-    let successCount = 0;
-    let errorCount = 0;
-    let skippedCount = 0;
-    let totalProcessed = 0;
+    if (allWarnings.length > 0) {
+      const proceed = window.confirm(
+        `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
+      );
+      if (!proceed) return;
+    }
 
-    while (true) {
-      const { done, value } = await reader.read();
-      
-      if (done) {
-        console.log('Stream complete');
-        
-        break;
+    const formData = new FormData();
+    formData.append("csvFile", file);
+    formData.append("ptmDate", ptmDate);
+    formData.append("type", type);
+
+    const startTime = Date.now();
+
+    try {
+      setUploading(true);
+
+      // Show progress modal immediately
+      updateProgress({
+        show: true,
+        percentage: 0,
+        current: 0,
+        total: 0,
+        message: "Initializing...",
+        status: "processing",
+      });
+      addLog([]); // Clear previous logs
+
+      const response = await fetch(`${axios.defaults.baseURL}/ptm/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // Keep incomplete line in buffer
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            
-            console.log('Received SSE data:', data);
+      let successCount = 0;
+      let errorCount = 0;
+      let skippedCount = 0;
+      let totalProcessed = 0;
 
-            // Update progress state
-            updateProgress({
-              show: true,
-              percentage: data.percentage || 0,
-              current: data.current || 0,
-              total: data.total || 0,
-              message: data.message || '',
-              status: data.type === 'complete' ? 'complete' : 
-                      data.type === 'error' ? 'processing' : 'processing',
-            });
+      while (true) {
+        const { done, value } = await reader.read();
 
-            // Track counts
-            if (data.type === 'success') successCount++;
-            if (data.type === 'error') errorCount++;
-            if (data.type === 'skipped') skippedCount++;
-            if (data.type !== 'complete' && data.type !== 'info') totalProcessed++;
+        if (done) {
+          console.log("Stream complete");
+          break;
+        }
 
-            // Add to progress logs (don't pass function, pass object)
-            if (data.type !== 'info') {
-              addLog({
-                type: data.type,
-                message: data.message,
-                studentName: data.studentName,
-                rollNo: data.rollNo,
-              });
-            }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // Keep incomplete line in buffer
 
-            // Handle completion
-            if (data.type === 'complete') {
-              const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-              
-              // Set final summary
-              setFinalSummaryData({
-                total: data.total || totalProcessed,
-                success: data.success || successCount,
-                errors: data.errors || errorCount,
-                skipped: data.skipped || skippedCount,
-                duration: `${duration}s`,
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              console.log("Received SSE data:", data);
+
+              // Update progress state
+              updateProgress({
+                show: true,
+                percentage: data.percentage || 0,
+                current: data.current || 0,
+                total: data.total || 0,
+                message: data.message || "",
+                status:
+                  data.type === "complete"
+                    ? "complete"
+                    : data.type === "error"
+                    ? "processing"
+                    : "processing",
               });
 
-              setTimeout(() => {
-                // Reset form
-                setFile(null);
-                setPtmDate("");
-                setAllErrors([]);
-                setAllWarnings([]);
-                setInvalidCells([]);
-                setValidationSummary(null);
-                setDataPreview([]);
-                setUploading(false);
-              }, 1000);
+              // Track counts
+              if (data.type === "success") successCount++;
+              if (data.type === "error") errorCount++;
+              if (data.type === "skipped") skippedCount++;
+              if (data.type !== "complete" && data.type !== "info")
+                totalProcessed++;
+
+              // Add to progress logs (don't pass function, pass object)
+              if (data.type !== "info") {
+                addLog({
+                  type: data.type,
+                  message: data.message,
+                  studentName: data.studentName,
+                  rollNo: data.rollNo,
+                });
+              }
+
+              // Handle completion
+              if (data.type === "complete") {
+                const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                // Set final summary
+                setFinalSummaryData({
+                  total: data.total || totalProcessed,
+                  success: data.success || successCount,
+                  errors: data.errors || errorCount,
+                  skipped: data.skipped || skippedCount,
+                  duration: `${duration}s`,
+                });
+
+                setTimeout(() => {
+                  // Reset form
+                  setFile(null);
+                  setPtmDate("");
+                  setAllErrors([]);
+                  setAllWarnings([]);
+                  setInvalidCells([]);
+                  setValidationSummary(null);
+                  setDataPreview([]);
+                  setUploading(false);
+                }, 1000);
+              }
+            } catch (parseError) {
+              console.error("Error parsing SSE data:", parseError, line);
             }
-          } catch (parseError) {
-            console.error('Error parsing SSE data:', parseError, line);
           }
         }
       }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert(`❌ Error uploading file: ${err.message}`);
+
+      updateProgress({
+        show: true,
+        message: `Error: ${err.message}`,
+        status: "error",
+      });
+    } finally {
+      setUploading(false);
+      setFile(null);
+      setPtmDate("");
     }
-
-  } catch (err) {
-    console.error("Upload error:", err);
-    alert(`❌ Error uploading file: ${err.message}`);
-    
-    updateProgress({
-      show: true,
-      message: `Error: ${err.message}`,
-      status: 'error',
-    });
-  } finally {
-    setUploading(false);
-  }
-};
-
-
+  };
 
   return (
     <div className="flex flex-col justify-center max-w-6xl p-6 mx-auto gap-4">
-      <Breadcrumb/>
+      <Breadcrumb />
       <div className="flex flex-col bg-white shadow-lg rounded-lg p-8 w-full">
         <div className="flex justify-between items-center mb-4">
           <div className="flex-1">
@@ -1713,7 +1700,7 @@ const handleSubmit = async (e) => {
                       className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
                     >
                       <td className="px-3 py-2 border-b border-gray-200 text-gray-500 font-medium">
-                        {i + 2}
+                        {i + 1}
                       </td>
                       {headers.map((h, j) => (
                         <td
@@ -2365,7 +2352,6 @@ const handleSubmit = async (e) => {
       )}
 
       {/* Progress Modal */}
-    
     </div>
   );
 };
