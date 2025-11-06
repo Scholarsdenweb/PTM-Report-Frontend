@@ -3,6 +3,8 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import axios from "../../api/axios"
 import Breadcrumb from "../../utils/Breadcrumb";
+import { useProgress } from '../hooks';
+
 
 // Normalize a string for matching (lowercase, remove non-alphanumerics)
 const normalize = (str) =>
@@ -53,16 +55,25 @@ const UploadForm = () => {
   const [validationSummary, setValidationSummary] = useState(null);
 
   // Progress tracking states
-  const [progress, setProgress] = useState({
-    show: false,
-    percentage: 0,
-    current: 0,
-    total: 0,
-    message: "",
-    status: "idle", // idle, processing, complete, error
-  });
-  const [progressLogs, setProgressLogs] = useState([]);
-  const [showProgressModal, setShowProgressModal] = useState(false);
+  // const [progress, setProgress] = useState({
+  //   show: false,
+  //   percentage: 0,
+  //   current: 0,
+  //   total: 0,
+  //   message: "",
+  //   status: "idle", // idle, processing, complete, error
+  // });
+
+
+
+  // const [progressLogs, setProgressLogs] = useState([]);
+
+  const { updateProgress, addLog, setFinalSummaryData } = useProgress();
+
+
+
+
+  
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -1279,90 +1290,228 @@ const UploadForm = () => {
   const isCellInvalid = (rowIndex, header) =>
     invalidCells.some((c) => c.row === rowIndex && c.field === header);
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   if (!file) {
-  //     alert("Please select a file.");
-  //     return;
-  //   }
-  //   if (!ptmDate) {
-  //     alert("Please select PTM date.");
-  //     return;
-  //   }
-
-  //   if (allErrors.length > 0) {
-  //     alert(
-  //       "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
-  //     );
-  //     return;
-  //   }
-
-  //   alert("✅ File uploaded successfully!");
-  // };
 
 
+//  const handleSubmit = async (e) => {
+//     e.preventDefault();
+
+//     if (!file) {
+//       alert("Please select a file.");
+//       return;
+//     }
+//     if (!ptmDate) {
+//       alert("Please select PTM date.");
+//       return;
+//     }
+
+//     if (allErrors.length > 0) {
+//       alert(
+//         "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
+//       );
+//       return;
+//     }
+
+//     // alert("✅ File uploaded successfully!");
+
+//     if (allWarnings.length > 0) {
+//       const proceed = window.confirm(
+//         `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
+//       );
+//       if (!proceed) return;
+//     }
+
+//     const formData = new FormData();
+//     formData.append("csvFile", file);
+//     formData.append("ptmDate", ptmDate);
+//     formData.append("type", "regenerate");
+
+//     try {
+//       setUploading(true);
+//       const res = await axios.post(`/ptm/upload`, formData);
+//       // alert("✅ File uploaded successfully!");
+//       setUploading(false);
+//       setDataPreview([]);
+//       setPtmDate("");
+//       setAllErrors([]);
+//       setAllWarnings([]);
+//       setInvalidCells([]);
+//       // setShowResponse(res.data.results);
+//       setValidationSummary(null);
+//       console.log("Upload response:fron on Submit", res.data);
+
+//       // Handle success - you can add more logic here
+//     } catch (err) {
+//       console.error("Upload error:", err);
+//       alert("❌ Error uploading file");
+//     } finally {
+//       setUploading(false);
+//     }
+//   };
 
 
- const handleSubmit = async (e) => {
-    e.preventDefault();
 
-    if (!file) {
-      alert("Please select a file.");
-      return;
+
+
+
+
+
+
+// Add this function in your UploadForm component
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!file) {
+    alert("Please select a file.");
+    return;
+  }
+  if (!ptmDate) {
+    alert("Please select PTM date.");
+    return;
+  }
+
+  if (allErrors.length > 0) {
+    alert("❌ Cannot submit due to validation errors. Please fix the errors shown below and try again.");
+    return;
+  }
+
+  if (allWarnings.length > 0) {
+    const proceed = window.confirm(
+      `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
+    );
+    if (!proceed) return;
+  }
+
+  const formData = new FormData();
+  formData.append("csvFile", file);
+  formData.append("ptmDate", ptmDate);
+  formData.append("type", "generate");
+
+  const startTime = Date.now();
+
+  try {
+    setUploading(true);
+    
+    // Show progress modal immediately
+    updateProgress({
+      show: true,
+      percentage: 0,
+      current: 0,
+      total: 0,
+      message: "Initializing...",
+      status: "processing",
+    });
+    addLog([]); // Clear previous logs
+
+    const response = await fetch(`${axios.defaults.baseURL}/ptm/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    if (!ptmDate) {
-      alert("Please select PTM date.");
-      return;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedCount = 0;
+    let totalProcessed = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        console.log('Stream complete');
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            console.log('Received SSE data:', data);
+
+            // Update progress state
+            updateProgress({
+              show: true,
+              percentage: data.percentage || 0,
+              current: data.current || 0,
+              total: data.total || 0,
+              message: data.message || '',
+              status: data.type === 'complete' ? 'complete' : 
+                      data.type === 'error' ? 'processing' : 'processing',
+            });
+
+            // Track counts
+            if (data.type === 'success') successCount++;
+            if (data.type === 'error') errorCount++;
+            if (data.type === 'skipped') skippedCount++;
+            if (data.type !== 'complete' && data.type !== 'info') totalProcessed++;
+
+            // Add to progress logs (don't pass function, pass object)
+            if (data.type !== 'info') {
+              addLog({
+                type: data.type,
+                message: data.message,
+                studentName: data.studentName,
+                rollNo: data.rollNo,
+              });
+            }
+
+            // Handle completion
+            if (data.type === 'complete') {
+              const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+              
+              // Set final summary
+              setFinalSummaryData({
+                total: data.total || totalProcessed,
+                success: data.success || successCount,
+                errors: data.errors || errorCount,
+                skipped: data.skipped || skippedCount,
+                duration: `${duration}s`,
+              });
+
+              setTimeout(() => {
+                // Reset form
+                setFile(null);
+                setPtmDate("");
+                setAllErrors([]);
+                setAllWarnings([]);
+                setInvalidCells([]);
+                setValidationSummary(null);
+                setDataPreview([]);
+                setUploading(false);
+              }, 1000);
+            }
+          } catch (parseError) {
+            console.error('Error parsing SSE data:', parseError, line);
+          }
+        }
+      }
     }
 
-    if (allErrors.length > 0) {
-      alert(
-        "❌ Cannot submit due to validation errors. Please fix the errors shown below and try again."
-      );
-      return;
-    }
-
-    // alert("✅ File uploaded successfully!");
-
-    if (allWarnings.length > 0) {
-      const proceed = window.confirm(
-        `⚠️ ${allWarnings.length} warning(s) detected.\n\nThese are non-critical issues but should be reviewed.\n\nDo you want to proceed with the upload?`
-      );
-      if (!proceed) return;
-    }
-
-    const formData = new FormData();
-    formData.append("csvFile", file);
-    formData.append("ptmDate", ptmDate);
-    formData.append("type", "regenerate");
-
-    try {
-      setUploading(true);
-      const res = await axios.post(`/ptm/upload`, formData);
-      // alert("✅ File uploaded successfully!");
-      setUploading(false);
-      setDataPreview([]);
-      setPtmDate("");
-      setAllErrors([]);
-      setAllWarnings([]);
-      setInvalidCells([]);
-      // setShowResponse(res.data.results);
-      setValidationSummary(null);
-      console.log("Upload response:fron on Submit", res.data);
-
-      // Handle success - you can add more logic here
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("❌ Error uploading file");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-
-
-
+  } catch (err) {
+    console.error("Upload error:", err);
+    alert(`❌ Error uploading file: ${err.message}`);
+    
+    updateProgress({
+      show: true,
+      message: `Error: ${err.message}`,
+      status: 'error',
+    });
+  } finally {
+    setUploading(false);
+  }
+};
 
 
 
@@ -1537,7 +1686,7 @@ const UploadForm = () => {
         {dataPreview.length > 0 && (
           <div className="mt-8">
             <h4 className="font-semibold text-slate-800 mb-3">
-              📋 Data Preview (First 100 rows)
+              📋 Data Preview (First 10 rows)
             </h4>
             <div className="overflow-auto max-h-[400px] border border-gray-300 rounded-lg shadow-sm">
               <table className="min-w-full text-left text-xs">
@@ -2215,200 +2364,7 @@ const UploadForm = () => {
       )}
 
       {/* Progress Modal */}
-      {showProgressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-bold">
-                📊 Report Generation Progress
-              </h3>
-              {progress.status === "complete" && (
-                <button
-                  onClick={() => setShowProgressModal(false)}
-                  className="text-white hover:text-gray-200 transition"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            <div className="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-700">
-                    {progress.current} / {progress.total} Students
-                  </span>
-                  <span className="text-sm font-bold text-blue-600">
-                    {progress.percentage}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      progress.status === "complete"
-                        ? "bg-green-500"
-                        : progress.status === "error"
-                        ? "bg-red-500"
-                        : "bg-blue-500"
-                    }`}
-                    style={{ width: `${progress.percentage}%` }}
-                  />
-                </div>
-                <p className="text-sm text-gray-600 text-center">
-                  {progress.message}
-                </p>
-              </div>
-
-              {/* Progress Stats */}
-              {progress.total > 0 && (
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600">
-                      {progress.total}
-                    </p>
-                    <p className="text-xs text-gray-600">Total</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-600">
-                      {
-                        progressLogs.filter((log) => log.type === "success")
-                          .length
-                      }
-                    </p>
-                    <p className="text-xs text-gray-600">Success</p>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-red-600">
-                      {
-                        progressLogs.filter((log) => log.type === "error")
-                          .length
-                      }
-                    </p>
-                    <p className="text-xs text-gray-600">Errors</p>
-                  </div>
-                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {
-                        progressLogs.filter((log) => log.type === "skipped")
-                          .length
-                      }
-                    </p>
-                    <p className="text-xs text-gray-600">Skipped</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Activity Log */}
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <span>Activity Log</span>
-                  {progress.status === "processing" && (
-                    <svg
-                      className="animate-spin h-4 w-4 text-blue-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  )}
-                </h4>
-                <div className="flex-1 overflow-y-auto bg-gray-50 rounded-lg p-4 space-y-2 max-h-60">
-                  {progressLogs.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center">
-                      Waiting for updates...
-                    </p>
-                  ) : (
-                    progressLogs
-                      .slice()
-                      .reverse()
-                      .map((log, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-lg text-sm border-l-4 ${
-                            log.type === "success"
-                              ? "bg-green-50 border-green-500"
-                              : log.type === "error"
-                              ? "bg-red-50 border-red-500"
-                              : log.type === "skipped"
-                              ? "bg-yellow-50 border-yellow-500"
-                              : log.type === "complete"
-                              ? "bg-blue-50 border-blue-500"
-                              : "bg-gray-100 border-gray-400"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-800">
-                                {log.message}
-                              </p>
-                              {log.studentName && (
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {log.studentName} ({log.rollNo})
-                                </p>
-                              )}
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {log.timestamp}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            {progress.status === "complete" && (
-              <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
-                <button
-                  onClick={() => {
-                    setShowProgressModal(false);
-                    setProgress({
-                      show: false,
-                      percentage: 0,
-                      current: 0,
-                      total: 0,
-                      message: "",
-                      status: "idle",
-                    });
-                    setProgressLogs([]);
-                  }}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };

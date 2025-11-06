@@ -19,6 +19,8 @@ import StudentReport from "./Components/ReportViewer/StudentReport";
 import BatchWiseStudentList from "./Components/ReportViewer/BatchWiseStudentList";
 import ShowAllResultOfStudent from "./Components/ReportViewer/ShowAllResultOfStudent";
 import SendWhatsappMessage from "./Components/SendWhatsappMessage";
+import GlobalProgressBar from "./Components/GlobalProgressBar";
+import { ProgressProvider } from "./context/ProgressContext";
 
 // NEW: Protected route wrapper
 const ProtectedRoute = ({ isLoggedIn, userRole, allowedRoles, children }) => {
@@ -55,6 +57,8 @@ function App() {
   }
 
   return (
+        <ProgressProvider>
+
     <Router>
       <Routes>
         {/* Login */}
@@ -293,6 +297,10 @@ function App() {
         />
       </Routes>
     </Router>
+          <GlobalProgressBar />
+
+        </ProgressProvider>
+
   );
 }
 
