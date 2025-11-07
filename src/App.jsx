@@ -12,7 +12,7 @@ import SidebarLayout from "./Components/SidebarLayout";
 import axios from "../api/axios";
 import AdminReportViewer from "./Components/AdminReportViewer";
 import BulkPhotoUploader from "./Components/BulkPhotoUploader";
-import { getCookie } from "../utils/getCookie";
+// import { getCookie } from "../utils/getCookie";
 import FacultyDashboard from "./Components/FacultyDashboard";
 import StudentReport from "./Components/ReportViewer/StudentReport";
 import BatchWiseStudentList from "./Components/ReportViewer/BatchWiseStudentList";
