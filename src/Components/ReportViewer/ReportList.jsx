@@ -137,15 +137,16 @@ const ReportList = ({
   const handleSendMessagesOnWhatsapp = async () => {
     try {
       setSending(true);
+      console.log("params", params);
       const response = await axios.post("/ptm/send-whatsapp-message", {
         params,
       });
 
       console.log("WhatsApp send response:", response.data);
 
-      setWhatsAppResults(response.data.results || []);
-      setShowSendWhatsappMessage(true);
-      toast.success("WhatsApp messages processed!");
+      // setWhatsAppResults(response.data.results || []);
+      // setShowSendWhatsappMessage(true);
+      // toast.success("WhatsApp messages processed!");
     } catch (error) {
       console.error("Error sending messages on WhatsApp:", error);
       toast.error("Failed to send messages. Please try again.");
@@ -155,18 +156,30 @@ const ReportList = ({
   };
 
   const handleSendSingleReportOnWhatsapp = async () => {
-    console.log("handleSendSingleReportOnWhatsapp function is");
-    const response = await axios.post("/ptm/send-single-message-on-whatsapp", {
-      rollNo : currentReport.student.rollNo,
-      date,
-    });
+    setSending(true);
 
-    console.log("response from handelSendSingleReportOnWhatsapp", response);
+    try {
+      console.log("handleSendSingleReportOnWhatsapp function is");
+      const response = await axios.post(
+        "/ptm/send-single-message-on-whatsapp",
+        {
+          rollNo: currentReport.student.rollNo,
+          date,
+        }
+      );
 
-    console.log("response from sendReportOnWhatsappMessage", response);
-    // setShowReportSendConfirmation(false);
+      console.log("response from handelSendSingleReportOnWhatsapp", response);
 
-    console.log("current Report", currentReport);
+      console.log("response from sendReportOnWhatsappMessage", response);
+      // setShowReportSendConfirmation(false);
+
+      console.log("current Report", currentReport);
+    } catch (error) {
+      console.error("Error sending messages on WhatsApp:", error);
+      toast.error("Failed to send messages. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -283,15 +296,17 @@ const ReportList = ({
                     🔗 Open Full PDF
                   </a>
 
-                { path === "send-whatsapp-message" &&  <button
-                    type="button"
-                    onClick={() => {
-                      setShowReportSendConfirmation(true);
-                      setCurrentReport(report);
-                    }}
-                  >
-                    send
-                  </button>}
+                  {path === "send-whatsapp-message" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowReportSendConfirmation(true);
+                        setCurrentReport(report);
+                      }}
+                    >
+                      send
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

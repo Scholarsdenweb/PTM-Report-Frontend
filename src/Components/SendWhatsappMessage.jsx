@@ -65,8 +65,7 @@ const SendWhatsappMessage = () => {
     fetchReports();
   }, [fetchReports]);
 
-  console.log("BatchID from SendWhatsappMessage", batchId);
-  console.log("BatchID from SendWhatsappMessage", date);
+
 
   const navigate = useNavigate();
 
