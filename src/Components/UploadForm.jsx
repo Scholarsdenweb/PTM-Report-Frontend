@@ -340,7 +340,9 @@ const UploadForm = ({ type = "generate" }) => {
     const VALID_OBJECTIVE_SUBJECTS = [
       "Phy(10)",
       "Chem(10)",
+      "Chem(20)",
       "Bio(10)",
+      "MAT(25)",
       "Math(25)",
       "Maths(25)",
       "Eng(15)",
@@ -355,11 +357,19 @@ const UploadForm = ({ type = "generate" }) => {
     ];
     const VALID_SUBJECTIVE_SUBJECTS = [
       "Phy(14)",
+      "Phy(29)",
       "Chem(13)",
+      "Chem(26)",
       "Bio(13)",
+      "Bio(25)",
       "Maths(20)",
+      "Maths(80)",
+      "SST(80)",
       "Math(20)",
+      "English(40)",
       "Total(40)",
+      "Total(80)",
+      
       "Rank",
       "Highest_Marks",
       "High",
@@ -387,6 +397,8 @@ const UploadForm = ({ type = "generate" }) => {
       "Zoology",
       "Physical Chemistry",
       "Organic Chemistry",
+      "History & Civics",
+      "Geography",
       "Biology",
       "English",
       "Total",
