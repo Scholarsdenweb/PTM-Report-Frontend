@@ -20,6 +20,7 @@ const BulkPhotoUploader = () => {
     failed: [],
     skipped: [],
     invalid: [],
+    renamed: [],
   });
 
   const [message, setMessage] = useState("");
@@ -27,15 +28,56 @@ const BulkPhotoUploader = () => {
   const ALLOWED_FORMATS = [
     "image/jpeg",
     "image/jpg",
-    "image/png",
-    "image/gif",
-    "image/webp",
   ];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+  const normalizeStudentPhotoFile = (file) => {
+    const extension = file.name.match(/\.jpe?g$/i)?.[0] || ".jpg";
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    const normalizedBase = baseName
+      .replace(/[_-]+(?=\d)/g, "_")
+      .replace(/\s+/g, " ")
+      .trim();
+    const match = normalizedBase.match(/^(.*?)_(\d+)$/);
+
+    if (!match) return null;
+
+    const cleanName = match[1].replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    const cleanRollNo = match[2].replace(/,/g, "").replace(/\s+/g, "").trim();
+
+    if (!cleanName || !cleanRollNo) return null;
+
+    const normalizedName = `${cleanName}_${cleanRollNo}.jpg`;
+    const renamedFile =
+      file.name === normalizedName
+        ? file
+        : new File([file], normalizedName, {
+            type: "image/jpeg",
+            lastModified: file.lastModified,
+          });
+
+    return {
+      file: renamedFile,
+      originalName: file.name,
+      normalizedName,
+      changed: file.name !== normalizedName || extension.toLowerCase() !== ".jpg",
+    };
+  };
+
   const validateFile = (file) => {
     if (!ALLOWED_FORMATS.includes(file.type)) {
-      return { valid: false, reason: `Invalid format: ${file.name}` };
+      return { valid: false, reason: `Invalid format: ${file.name}. Use JPG only.` };
+    }
+    if (!/\.jpe?g$/i.test(file.name)) {
+      return { valid: false, reason: `Invalid extension: ${file.name}. Use .jpg or .jpeg.` };
+    }
+
+    const normalized = normalizeStudentPhotoFile(file);
+    if (!normalized) {
+      return {
+        valid: false,
+        reason: `Invalid filename: ${file.name}. Expected firstname secondname_rollnumber.jpg`,
+      };
     }
     if (file.size > MAX_FILE_SIZE) {
       const sizeMB = (file.size / 1024 / 1024).toFixed(2);
@@ -44,18 +86,28 @@ const BulkPhotoUploader = () => {
         reason: `File too large: ${file.name} (${sizeMB}MB > 10MB)`,
       };
     }
-    return { valid: true };
+    return { valid: true, normalized };
   };
 
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files || []);
     const validFiles = [];
     const invalidFiles = [];
+    const renamedFiles = [];
 
     selectedFiles.forEach((file) => {
       const validation = validateFile(file);
-      if (validation.valid) validFiles.push(file);
-      else invalidFiles.push(validation.reason);
+      if (validation.valid) {
+        validFiles.push(validation.normalized.file);
+        if (validation.normalized.changed) {
+          renamedFiles.push({
+            from: validation.normalized.originalName,
+            to: validation.normalized.normalizedName,
+          });
+        }
+      } else {
+        invalidFiles.push(validation.reason);
+      }
     });
 
     setFiles(validFiles);
@@ -73,12 +125,13 @@ const BulkPhotoUploader = () => {
       failed: [],
       skipped: [],
       invalid: invalidFiles,
+      renamed: renamedFiles,
     });
     setMessage(
       invalidFiles.length
-        ? `⚠️ ${invalidFiles.length} invalid file(s) skipped.`
+        ? `⚠️ ${invalidFiles.length} invalid file(s) skipped.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}`
         : validFiles.length
-        ? `✓ ${validFiles.length} valid image(s) ready to upload.`
+        ? `✓ ${validFiles.length} valid image(s) ready to upload.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}`
         : "No valid images selected."
     );
   };
@@ -97,6 +150,7 @@ const BulkPhotoUploader = () => {
       failed: [],
       skipped: [],
       invalid: results.invalid,
+      renamed: results.renamed,
     });
 
     const formData = new FormData();
@@ -106,7 +160,8 @@ const BulkPhotoUploader = () => {
     try {
       const backendURL = axios.defaults.baseURL;
       eventSource = new EventSource(
-        `${backendURL}/students/bulk-upload-photos-stream`
+        `${backendURL}/students/bulk-upload-photos-stream`,
+        { withCredentials: true }
       );
 
       eventSource.onmessage = (event) => {
@@ -138,7 +193,7 @@ const BulkPhotoUploader = () => {
           setUploadStats((prev) => ({ ...prev, skipped: prev.skipped + 1 }));
         }
 
-        if (data.type === "progress") {
+        if (data.total && typeof data.completed === "number") {
           setProgress(Math.round((data.completed / data.total) * 100));
         }
 
@@ -242,6 +297,7 @@ const BulkPhotoUploader = () => {
         {(results.uploaded.length > 0 ||
           results.failed.length > 0 ||
           results.skipped.length > 0 ||
+          results.renamed.length > 0 ||
           results.invalid.length > 0) && (
           <div className="mt-6 space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">
@@ -259,6 +315,23 @@ const BulkPhotoUploader = () => {
                     return <li key={i}>{name}</li>;
                   })}
                 </ul>
+              </div>
+            )}
+
+            {results.renamed.length > 0 && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                <p className="font-semibold text-blue-700 mb-2">
+                  Renamed Before Upload ({results.renamed.length})
+                </p>
+                <ol className="text-sm text-blue-800 list-decimal list-inside max-h-40 overflow-auto">
+                  {results.renamed.map((item, i) => (
+                    <li key={i}>
+                      <span className="text-gray-600">{item.from}</span>
+                      <span className="mx-2">→</span>
+                      <span className="font-medium">{item.to}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             )}
 

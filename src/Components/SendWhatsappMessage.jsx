@@ -8,6 +8,7 @@ import Breadcrumb from "../../utils/Breadcrumb";
 import DateList from "./ReportViewer/DateList";
 import BackButton from "./ReportViewer/BackButton";
 import ReportList from "./ReportViewer/ReportList";
+import Loading from "../../utils/Loading";
 
 const SendWhatsappMessage = () => {
   const [loading, setLoading] = useState(false);
@@ -24,12 +25,9 @@ const SendWhatsappMessage = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
 
-  const [searchParams, setSearchParams] = useState();
-
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
     setCurrentPage(1);
-    setSearchParams({ page: 1 });
   };
 
   const fetchReports = useCallback(() => {
@@ -81,7 +79,6 @@ const SendWhatsappMessage = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    setSearchParams({ page });
   };
 
   const handleDateSelect = (selectedDate) => {
@@ -122,6 +119,12 @@ const SendWhatsappMessage = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+      {loading && (
+        <div className="fixed inset-0 bg-white/60 flex items-center justify-center z-50">
+          <Loading />
+        </div>
+      )}
+
       <div>
         <Breadcrumb />
       </div>

@@ -37,15 +37,17 @@ function App() {
       try {
         const res = await axios.get("/auth/me");
         setUser(res.data);
+        localStorage.setItem("role", res.data.role);
         setIsLoggedIn(true);
-      } catch (err) {
+      } catch {
+        localStorage.removeItem("role");
         setIsLoggedIn(false);
       }
     };
     checkAuth();
   }, []);
 
-  const role = localStorage.getItem("role");
+  const role = user?.role || localStorage.getItem("role");
 
   if (isLoggedIn === null) {
     return (
@@ -75,6 +77,7 @@ function App() {
                 onLogin={(userData) => {
                   setIsLoggedIn(true);
                   setUser(userData);
+                  localStorage.setItem("role", userData.role);
                 }}
               />
             )
@@ -150,7 +153,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin", "Faculty"]}
+              allowedRoles={["Admin"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />
@@ -165,7 +168,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin", "Faculty"]}
+              allowedRoles={["Admin"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />
@@ -180,7 +183,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin", "Faculty"]}
+              allowedRoles={["Admin"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />

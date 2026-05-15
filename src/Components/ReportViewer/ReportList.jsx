@@ -18,9 +18,9 @@ const ReportList = ({
   // fetchReports,
 }) => {
   const [downloading, setDownloading] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const loading = false;
 
-  const { batchId, date } = useParams();
+  const { date } = useParams();
 
   const location = useLocation();
   const path = location.pathname.split("/")[1];
@@ -144,9 +144,9 @@ const ReportList = ({
 
       console.log("WhatsApp send response:", response.data);
 
-      // setWhatsAppResults(response.data.results || []);
-      // setShowSendWhatsappMessage(true);
-      // toast.success("WhatsApp messages processed!");
+      setWhatsAppResults(response.data.results || []);
+      setShowSendWhatsappMessage(true);
+      toast.success("WhatsApp messages processed!");
     } catch (error) {
       console.error("Error sending messages on WhatsApp:", error);
       toast.error("Failed to send messages. Please try again.");

@@ -20,7 +20,7 @@ const RollNoFilter = ({
     }, debounceDelay);
 
     return () => clearTimeout(handler); // cleanup if user keeps typing
-  }, [inputValue]);
+  }, [debounceDelay, inputValue, onChange]);
 
   return (
     <div className="w-full sm:w-64">

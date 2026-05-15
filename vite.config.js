@@ -13,7 +13,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("pdfjs-dist") || id.includes("react-pdf-highlighter")) {
+            return "pdf";
+          }
+          if (id.includes("xlsx") || id.includes("papaparse")) {
+            return "spreadsheet";
+          }
+          if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom")) {
+            return "react";
+          }
+          return "vendor";
+        },
       },
     },
   },

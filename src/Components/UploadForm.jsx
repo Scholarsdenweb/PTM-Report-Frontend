@@ -98,11 +98,40 @@ const UploadForm = ({ type = "generate" }) => {
             header: true,
             skipEmptyLines: true,
           });
-          data = parsed.data;
+          data = parsed.data
+            .filter((row) =>
+              Object.values(row).some(
+                (value) =>
+                  value !== undefined &&
+                  value !== null &&
+                  String(value).trim() !== ""
+              )
+            )
+            .map((row, rowIndex) => ({
+              ...row,
+              __sheetName: "CSV",
+              __sheetRow: rowIndex + 2,
+            }));
         } else if (ext === "xlsx") {
           const workbook = XLSX.read(event.target.result, { type: "array" });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          data = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+          data = workbook.SheetNames.flatMap((sheetName) => {
+            const worksheet = workbook.Sheets[sheetName];
+            return XLSX.utils
+              .sheet_to_json(worksheet, { defval: "" })
+              .filter((row) =>
+                Object.values(row).some(
+                  (value) =>
+                    value !== undefined &&
+                    value !== null &&
+                    String(value).trim() !== ""
+                )
+              )
+              .map((row, rowIndex) => ({
+                ...row,
+                __sheetName: sheetName,
+                __sheetRow: rowIndex + 2,
+              }));
+          });
         } else {
           setAllErrors([
             { type: "ERROR", message: "❌ Unsupported file format" },
@@ -149,8 +178,41 @@ const UploadForm = ({ type = "generate" }) => {
       return { isValid: false, errors: criticalErrors };
     }
 
-    const rawHeaders = Object.keys(data[0]);
+    const sheetHeaders = new Map();
+    const headerSheets = new Map();
+
+    data.forEach((row) => {
+      const sheetName = row.__sheetName || "Sheet";
+      const headersForSheet = sheetHeaders.get(sheetName) || new Set();
+
+      Object.keys(row)
+        .filter((header) => !header.startsWith("__"))
+        .forEach((header) => {
+          headersForSheet.add(header);
+          const sheetsForHeader = headerSheets.get(header) || new Set();
+          sheetsForHeader.add(sheetName);
+          headerSheets.set(header, sheetsForHeader);
+        });
+
+      sheetHeaders.set(sheetName, headersForSheet);
+    });
+
+    const rawHeaders = [...new Set([...sheetHeaders.values()].flatMap((headers) => [...headers]))];
     const normalizedHeaders = rawHeaders.map(normalize);
+
+    const getHeaderSheetLabel = (header) => {
+      const sheets = [...(headerSheets.get(header) || [])];
+      return sheets.length ? sheets.join(", ") : "Unknown sheet";
+    };
+
+    const getRelatedSheetLabel = (headers) => {
+      const sheets = [
+        ...new Set(
+          headers.flatMap((header) => [...(headerSheets.get(header) || [])])
+        ),
+      ];
+      return sheets.length ? sheets.join(", ") : "Unknown sheet";
+    };
 
     console.log("📋 Detected headers:", rawHeaders);
     console.log("📋 Normalized headers:", normalizedHeaders);
@@ -175,31 +237,43 @@ const UploadForm = ({ type = "generate" }) => {
         }
       }
 
-      if (!found) {
-        // Check if there's a similar but invalid header (e.g., "Roll No." instead of "Roll No")
-        if (normKey === "rollno") {
-          const invalidVariations = rawHeaders.filter(
-            (h) => /^roll\s*no\.?$/i.test(h) && !aliases.includes(h)
-          );
+      if (!found) return;
+    });
 
-          if (invalidVariations.length > 0) {
-            invalidVariations.forEach((invalidHeader) => {
+    sheetHeaders.forEach((headersForSheet, sheetName) => {
+      const sheetRawHeaders = [...headersForSheet];
+      const sheetNormalizedHeaders = sheetRawHeaders.map(normalize);
+
+      REQUIRED_NORMALIZED.forEach((normKey) => {
+        const aliases = HEADER_ALIASES[normKey] || [];
+        const normAliases = aliases.map(normalize);
+        const found = sheetNormalizedHeaders.some((header) =>
+          normAliases.includes(header)
+        );
+
+        if (found) return;
+
+        if (normKey === "rollno") {
+          sheetRawHeaders
+            .filter((h) => /^roll\s*no\.?$/i.test(h) && !aliases.includes(h))
+            .forEach((invalidHeader) => {
               similarButInvalidHeaders.push({
                 found: invalidHeader,
                 expected: aliases,
-                normKey: normKey,
-                issue: `Found "${invalidHeader}" but it's not in the accepted format`,
+                normKey,
+                sheetName,
+                issue: `Found "${invalidHeader}" in ${sheetName}, but it's not in the accepted format`,
               });
             });
-          }
         }
 
         missingRequired.push({
           field: normKey,
+          sheetName,
           expectedNames: aliases.join(" / "),
-          suggestion: `Add a column named "${aliases[0]}" to your Excel file`,
+          suggestion: `Add a column named "${aliases[0]}" to ${sheetName}`,
         });
-      }
+      });
     });
 
     // Report similar but invalid headers first
@@ -207,10 +281,10 @@ const UploadForm = ({ type = "generate" }) => {
       similarButInvalidHeaders.forEach((invalid) => {
         criticalErrors.push({
           type: "INVALID_HEADER_VARIATION",
-          message: `❌ Invalid column name: "${invalid.found}"`,
+          message: `❌ Invalid column name: "${invalid.found}" in ${invalid.sheetName || getHeaderSheetLabel(invalid.found)}`,
           details: invalid.issue,
           expected: `Accepted formats: ${invalid.expected.join(", ")}`,
-          fix: `Rename "${invalid.found}" to "${invalid.expected[0]}" (without period or extra characters)`,
+          fix: `Rename "${invalid.found}" to "${invalid.expected[0]}" in ${invalid.sheetName || getHeaderSheetLabel(invalid.found)} (without period or extra characters)`,
         });
       });
     }
@@ -289,15 +363,6 @@ const UploadForm = ({ type = "generate" }) => {
 
       // Check day range based on month
       const monthsWith30Days = ["Apr", "Jun", "Sept", "Nov"];
-      const monthsWith31Days = [
-        "Jan",
-        "Mar",
-        "May",
-        "Jul",
-        "Aug",
-        "Oct",
-        "Dec",
-      ];
 
       if (monthsWith30Days.includes(month) && day > 30) {
         return {
@@ -367,9 +432,9 @@ const UploadForm = ({ type = "generate" }) => {
       "SST(80)",
       "Math(20)",
       "English(40)",
+      "English(50)",
       "Total(40)",
       "Total(80)",
-      
       "Rank",
       "Highest_Marks",
       "High",
@@ -753,28 +818,23 @@ const UploadForm = ({ type = "generate" }) => {
         return;
       }
 
-      // Check JEE Advanced: JEE_ADV_Result_Paper N_Result_DATE_Subject
-      if (header.startsWith("JEE_ADV_Result_")) {
-        // Pattern: JEE_ADV_Result_Paper 1_Result_07 July_Phy
-        // or: JEE_ADV_Result_07 July_Grand_Total
-        const parts = header.split("_");
+      // Check JEE Advanced: supports JEE_ADV_* and JEE_Advanced_* formats
+      if (header.startsWith("JEE_ADV_") || header.startsWith("JEE_Advanced_")) {
+        // Pattern: JEE_Advanced_Paper_1_Result_07 Jul_Phy
+        // or: JEE_Advanced_Result_Grand_Total_07 Jul
+        const paperMatch = header.match(
+          /^JEE_(?:ADV|Advanced)(?:_Result)?_Paper[ _]([12])_Result_(.+?)_(.+)$/
+        );
+        const resultMatch =
+          header.match(
+            /^JEE_(?:ADV|Advanced)_Result_(.+?)_(Rank|High|Highest_Marks|Highest Marks)$/
+          ) ||
+          header.match(/^JEE_(?:ADV|Advanced)_Result_Grand_Total_(.+)$/) ||
+          header.match(/^JEE_(?:ADV|Advanced)_Result_(.+?)_Grand_Total$/);
 
-        // Try to find the date part - it comes after "Result"
-        let datePartIndex = -1;
-        for (let i = 0; i < parts.length; i++) {
-          if (parts[i] === "Result" && i + 1 < parts.length) {
-            datePartIndex = i + 1;
-            break;
-          }
-        }
+        const date = paperMatch?.[2] || resultMatch?.[1];
 
-        if (datePartIndex === -1) {
-          // No "Result" found, date might be at index 2
-          datePartIndex = 2;
-        }
-
-        if (datePartIndex < parts.length) {
-          const date = parts[datePartIndex];
+        if (date) {
           const validDatePattern = /^(\d{1,2}\s+[A-Za-z]+|\d{4})$/;
 
           if (!validDatePattern.test(date)) {
@@ -785,9 +845,9 @@ const UploadForm = ({ type = "generate" }) => {
               invalidHeaders.push({
                 header: header,
                 issue: `Invalid date format: "${date}"`,
-                expected:
-                  "Date should be in format 'DD Month' with a space using short month names",
-                example: "JEE_ADV_Result_Paper 1_Result_07 Jul_Phy",
+              expected:
+                "Date should be in format 'DD Month' with a space using short month names",
+                example: "JEE_Advanced_Paper_1_Result_07 Jul_Phy",
                 fix: `Use proper date format with space and short month name (Jan, Feb, Mar, etc.)`,
               });
               return;
@@ -814,8 +874,8 @@ const UploadForm = ({ type = "generate" }) => {
             header: header,
             issue: "Invalid JEE Advanced Result format",
             expected:
-              "Format should be: JEE_ADV_Result_Paper 1_Result_Date_Subject",
-            example: "JEE_ADV_Result_Paper 1_Result_07 July_Phy",
+              "Format should be: JEE_Advanced_Paper_1_Result_Date_Subject",
+            example: "JEE_Advanced_Paper_1_Result_07 Jul_Phy",
           });
         }
         return;
@@ -882,10 +942,11 @@ const UploadForm = ({ type = "generate" }) => {
     // Report invalid headers
     if (invalidHeaders.length > 0) {
       invalidHeaders.forEach((invalid) => {
+        const sheetLabel = getHeaderSheetLabel(invalid.header);
         criticalErrors.push({
           type: "INVALID_HEADER",
-          message: `❌ Invalid column name: "${invalid.header}"`,
-          details: invalid.issue,
+          message: `❌ Invalid column name: "${invalid.header}" in ${sheetLabel}`,
+          details: `${invalid.issue}\nSheet: ${sheetLabel}`,
           expected: invalid.expected,
           example: invalid.example,
           fix: invalid.fix,
@@ -920,9 +981,12 @@ const UploadForm = ({ type = "generate" }) => {
       );
 
       if (missingFields.length > 0) {
+        const sheetLabel = getRelatedSheetLabel(
+          rawHeaders.filter((header) => header.startsWith(`Attendance_${month}`))
+        );
         criticalErrors.push({
           type: "INCOMPLETE_ATTENDANCE_SET",
-          message: `❌ Incomplete attendance fields for ${month}`,
+          message: `❌ Incomplete attendance fields for ${month} in ${sheetLabel}`,
           details: `Missing ${
             missingFields.length
           } required field(s): ${missingFields.join(", ")}`,
@@ -961,6 +1025,9 @@ const UploadForm = ({ type = "generate" }) => {
       );
 
       if (missingFields.length > 0 || !hasSubject) {
+        const sheetLabel = getRelatedSheetLabel(
+          rawHeaders.filter((header) => header.startsWith(`Result_${date}_`))
+        );
         const issues = [];
         if (missingFields.length > 0) {
           issues.push(`Missing: ${missingFields.join(", ")}`);
@@ -973,7 +1040,7 @@ const UploadForm = ({ type = "generate" }) => {
 
         criticalErrors.push({
           type: "INCOMPLETE_RESULT_SET",
-          message: `❌ Incomplete result fields for ${date}`,
+          message: `❌ Incomplete result fields for ${date} in ${sheetLabel}`,
           details: issues.join("; "),
           expected: `Required: Rank, at least one subject, Total, and Highest_Marks`,
           example: `Result_${date}_Rank, Result_${date}_Phy, Result_${date}_Chem, Result_${date}_Bio, Result_${date}_Total, Result_${date}_Highest_Marks`,
@@ -985,16 +1052,19 @@ const UploadForm = ({ type = "generate" }) => {
     // ============================================
     // STEP 3: VALIDATE EACH ROW
     // ============================================
-    const seenRollNos = new Set();
+    const seenRollNos = new Map();
     const duplicateRollNos = [];
     const emptyRowIndices = [];
 
     data.forEach((row, rowIndex) => {
-      const rowNum = rowIndex + 2; // Excel row number (header is row 1)
+      const rowNum = row.__sheetRow || rowIndex + 2; // Excel row number (header is row 1)
+      const sheetName = row.__sheetName || "Sheet";
+      const location = `${sheetName} row ${rowNum}`;
       let isRowEmpty = true;
 
       // Check if entire row is empty
-      Object.values(row).forEach((val) => {
+      Object.entries(row).forEach(([key, val]) => {
+        if (key.startsWith("__")) return;
         if (val !== undefined && val !== null && val.toString().trim() !== "") {
           isRowEmpty = false;
         }
@@ -1019,10 +1089,11 @@ const UploadForm = ({ type = "generate" }) => {
           ) {
             criticalErrors.push({
               type: "EMPTY_REQUIRED",
-              message: `❌ Row ${rowNum}: "${headerName}" is required but empty`,
+              message: `❌ ${location}: "${headerName}" is required but empty`,
               row: rowNum,
+              sheet: sheetName,
               column: headerName,
-              fix: `Please add a value for "${headerName}" in row ${rowNum}`,
+              fix: `Please add a value for "${headerName}" in ${location}`,
             });
             invalidCells.push({ row: rowIndex, field: headerName });
           }
@@ -1039,16 +1110,17 @@ const UploadForm = ({ type = "generate" }) => {
           if (seenRollNos.has(rollNo)) {
             if (!duplicateRollNos.includes(rollNo)) {
               duplicateRollNos.push(rollNo);
+              const firstLocation = seenRollNos.get(rollNo);
               criticalErrors.push({
                 type: "DUPLICATE_ROLL_NO",
-                message: `❌ Duplicate Roll No "${rollNo}" found`,
-                details: `This Roll No appears multiple times in the file. Each student must have a unique Roll No.`,
+                message: `❌ Duplicate Roll No "${rollNo}" found at ${location}`,
+                details: `First found at ${firstLocation}; duplicate found at ${location}. Each student must have a unique Roll No.`,
                 fix: `Check rows with Roll No "${rollNo}" and ensure each student has a unique number`,
               });
             }
             invalidCells.push({ row: rowIndex, field: rollNoHeader });
           } else {
-            seenRollNos.add(rollNo);
+            seenRollNos.set(rollNo, location);
           }
         }
       }
@@ -1080,8 +1152,9 @@ const UploadForm = ({ type = "generate" }) => {
           ) {
             warnings.push({
               type: "INCOMPLETE_ATTENDANCE",
-              message: `⚠️ Row ${rowNum}: Attendance for ${month} has Present data but missing Total Held classes`,
+              message: `⚠️ ${location}: Attendance for ${month} has Present data but missing Total Held classes`,
               row: rowNum,
+              sheet: sheetName,
               fix: `Add the total number of classes held in ${month}`,
             });
             invalidCells.push({ row: rowIndex, field: heldKey });
@@ -1097,8 +1170,9 @@ const UploadForm = ({ type = "generate" }) => {
             if (isNaN(present) || present < 0) {
               warnings.push({
                 type: "INVALID_ATTENDANCE",
-                message: `⚠️ Row ${rowNum}: Invalid Present value "${row[presentKey]}" for ${month}`,
+                message: `⚠️ ${location}: Invalid Present value "${row[presentKey]}" for ${month}`,
                 row: rowNum,
+                sheet: sheetName,
                 fix: "Present days must be a positive number",
               });
             }
@@ -1112,7 +1186,6 @@ const UploadForm = ({ type = "generate" }) => {
       resultDates.forEach((date) => {
         const rankKey = `Result_${date}_Rank`;
         const totalKey = `Result_${date}_Total`;
-        const highestKey = `Result_${date}_Highest_Marks`;
 
         // Check if rank is ABS/ABSENT
         const isAbsent =
@@ -1152,8 +1225,9 @@ const UploadForm = ({ type = "generate" }) => {
             if (isNaN(marks)) {
               warnings.push({
                 type: "INVALID_MARKS",
-                message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
+                message: `⚠️ ${location}: Invalid marks "${row[key]}" for ${subject} in ${date} exam`,
                 row: rowNum,
+                sheet: sheetName,
                 fix: "Marks must be a number or '-' if absent",
               });
             }
@@ -1169,8 +1243,9 @@ const UploadForm = ({ type = "generate" }) => {
         ) {
           warnings.push({
             type: "MISSING_TOTAL",
-            message: `⚠️ Row ${rowNum}: Result for ${date} has subject marks but missing Total`,
+            message: `⚠️ ${location}: Result for ${date} has subject marks but missing Total`,
             row: rowNum,
+            sheet: sheetName,
             fix: `Add the total marks for ${date} exam`,
           });
         }
@@ -1189,8 +1264,6 @@ const UploadForm = ({ type = "generate" }) => {
           "Eng(10)",
           "SST(30)",
         ];
-        let hasData = false;
-
         possibleFields.forEach((field) => {
           const key = `Objective_Pattern_${date}_${field}`;
           if (
@@ -1198,36 +1271,17 @@ const UploadForm = ({ type = "generate" }) => {
             row[key] !== undefined &&
             row[key] !== ""
           ) {
-            hasData = true;
             const marks = parseFloat(row[key]);
             if (isNaN(marks)) {
               warnings.push({
                 type: "INVALID_MARKS",
-                message: `⚠️ Row ${rowNum}: Invalid marks "${row[key]}" for ${field} in Objective Pattern ${date}`,
+                message: `⚠️ ${location}: Invalid marks "${row[key]}" for ${field} in Objective Pattern ${date}`,
                 row: rowNum,
+                sheet: sheetName,
               });
             }
           }
         });
-
-        if (hasData) {
-          const totalKey = rawHeaders.find(
-            (h) =>
-              h === `Objective_Pattern_${date}_Total(100)` ||
-              h === `Objective_Pattern_${date}_Total(120)` ||
-              h === `Objective_Pattern_${date}_Total`
-          );
-          if (
-            totalKey &&
-            (row[totalKey] === undefined || row[totalKey] === "")
-          ) {
-            warnings.push({
-              type: "MISSING_TOTAL",
-              message: `⚠️ Row ${rowNum}: Objective Pattern ${date} has subject marks but missing Total`,
-              row: rowNum,
-            });
-          }
-        }
       });
     });
 
@@ -1267,6 +1321,7 @@ const UploadForm = ({ type = "generate" }) => {
     setAllWarnings(warnings);
     setValidationSummary({
       totalRows: data.length,
+      totalSheets: new Set(data.map((row) => row.__sheetName || "Sheet")).size,
       validRows: data.length - emptyRowIndices.length,
       emptyRows: emptyRowIndices.length,
       criticalErrors: criticalErrors.length,
@@ -1283,6 +1338,7 @@ const UploadForm = ({ type = "generate" }) => {
       warnings: warnings,
       summary: {
         totalRows: data.length,
+        totalSheets: new Set(data.map((row) => row.__sheetName || "Sheet")).size,
         validRows: data.length - emptyRowIndices.length,
         emptyRows: emptyRowIndices.length,
         criticalErrors: criticalErrors.length,
@@ -1402,6 +1458,7 @@ const UploadForm = ({ type = "generate" }) => {
       const response = await fetch(`${axios.defaults.baseURL}/ptm/upload`, {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -1602,6 +1659,12 @@ const UploadForm = ({ type = "generate" }) => {
             </h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-white rounded p-2">
+                <span className="text-gray-600">Sheets:</span>
+                <span className="font-semibold ml-2">
+                  {validationSummary.totalSheets}
+                </span>
+              </div>
+              <div className="bg-white rounded p-2">
                 <span className="text-gray-600">Total Rows:</span>
                 <span className="font-semibold ml-2">
                   {validationSummary.totalRows}
@@ -1668,6 +1731,17 @@ const UploadForm = ({ type = "generate" }) => {
                             {err.details}
                           </p>
                         )}
+                        {Array.isArray(err.details) && (
+                          <ul className="text-xs text-red-700 mt-1 list-disc list-inside">
+                            {err.details.map((detail, detailIndex) => (
+                              <li key={detailIndex}>
+                                {detail.field
+                                  ? `${detail.sheetName ? `${detail.sheetName}: ` : ""}${detail.field}: ${detail.expectedNames}`
+                                  : JSON.stringify(detail)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                         {err.fix && (
                           <p className="text-xs text-green-700 mt-1 italic bg-green-50 p-2 rounded">
                             💡 Fix: {err.fix}
@@ -1686,7 +1760,7 @@ const UploadForm = ({ type = "generate" }) => {
         {dataPreview.length > 0 && (
           <div className="mt-8">
             <h4 className="font-semibold text-slate-800 mb-3">
-              📋 Data Preview (First 10 rows)
+              📋 Data Preview (First 10 rows across all sheets)
             </h4>
             <div className="overflow-auto max-h-[400px] border border-gray-300 rounded-lg shadow-sm">
               <table className="min-w-full text-left text-xs">
@@ -1694,6 +1768,12 @@ const UploadForm = ({ type = "generate" }) => {
                   <tr>
                     <th className="px-3 py-2 border-b border-gray-300 font-semibold text-gray-700">
                       #
+                    </th>
+                    <th className="px-3 py-2 border-b border-gray-300 font-semibold text-gray-700 whitespace-nowrap">
+                      Sheet
+                    </th>
+                    <th className="px-3 py-2 border-b border-gray-300 font-semibold text-gray-700 whitespace-nowrap">
+                      Row
                     </th>
                     {headers.map((h, i) => (
                       <th
@@ -1713,6 +1793,12 @@ const UploadForm = ({ type = "generate" }) => {
                     >
                       <td className="px-3 py-2 border-b border-gray-200 text-gray-500 font-medium">
                         {i + 1}
+                      </td>
+                      <td className="px-3 py-2 border-b border-gray-200 text-gray-600 whitespace-nowrap">
+                        {row.__sheetName || "Sheet"}
+                      </td>
+                      <td className="px-3 py-2 border-b border-gray-200 text-gray-600 whitespace-nowrap">
+                        {row.__sheetRow || i + 2}
                       </td>
                       {headers.map((h, j) => (
                         <td

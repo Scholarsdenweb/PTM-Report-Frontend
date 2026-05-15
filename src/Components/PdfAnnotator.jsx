@@ -38,7 +38,7 @@ const PdfAnnotator = ({ student, onSaveSuccess }) => {
         const pageIndex = position.pageNumber - 1;
         const page = pages[pageIndex];
 
-        const { boundingRect, content } = position;
+        const { boundingRect } = position;
         // draw highlight rectangle
         page.drawRectangle({
           x: boundingRect.x1,

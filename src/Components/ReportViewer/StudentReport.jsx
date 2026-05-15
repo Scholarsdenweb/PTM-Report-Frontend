@@ -11,7 +11,6 @@ import Loading from "../../../utils/Loading";
 import BackButton from "./BackButton";
 
 const StudentReport = () => {
-  const [searchRollNo, setSearchRollNo] = useState("");
   const { batchId, rollNo } = useParams();
 
   const [loading, setLoading] = useState("");
@@ -19,12 +18,6 @@ const StudentReport = () => {
   const [batches, setBatches] = useState([]);
 
   const navigate = useNavigate();
-
-  const handleFilterApply = async () => {
-    console.log("call handkeFileter Applyb function");
-
-    console.log("Test data from. handleFileterApply");
-  };
 
   const role = getCookie("role");
 

@@ -1,5 +1,5 @@
 import axios from "../../../api/axios";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BackButton from "./BackButton";
 import ReportList from "./ReportList";
@@ -18,7 +18,7 @@ const ShowAllResultOfStudent = () => {
     const role = getCookie("role");
   
 
-  const fetchAllReports = async () => {
+  const fetchAllReports = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.post("/students/get-all-student-reports", {
@@ -34,7 +34,7 @@ const ShowAllResultOfStudent = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [rollNo]);
 
   const handleBack = () => {
     if (batchId) navigate(`/students/${batchId}`);
@@ -43,7 +43,7 @@ const ShowAllResultOfStudent = () => {
   useEffect(() => {
     console.log("testdata ");
     fetchAllReports();
-  }, []);
+  }, [fetchAllReports]);
 
   return (
     // <div className="mb-6">

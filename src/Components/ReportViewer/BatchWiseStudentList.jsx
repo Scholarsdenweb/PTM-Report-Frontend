@@ -1,5 +1,5 @@
 import axios from "../../../api/axios";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import StudentList from "./StudentList";
 import Breadcrumb from "../../../utils/Breadcrumb";
@@ -29,46 +29,45 @@ const BatchWiseStudentList = () => {
 
   // };
 
-const handleFilterValue = async (rollNo) => {
-  setFilterValue(rollNo);
-
-  // Only fetch all if the input is empty and it wasn’t already empty
-  if (!rollNo || rollNo.trim() === "") {
-    if (filterValue !== "") {
-      await fetchStudentByBatch(); // only refetch all when clearing
-    }
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const response = await axios.get("/students/search", {
-      params: {
-        batch: batchId,
-        rollNo: rollNo.trim(),
-      },
-    });
-
-    console.log("Filtered students:", response.data);
-    setStudents(response.data.students || []);
-  } catch (err) {
-    console.error("Error filtering students:", err);
-    setStudents([]); // clear on error
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  const fetchStudentByBatch = async () => {
+  const fetchStudentByBatch = useCallback(async () => {
     const response = await axios.post("/students/student-by-batch", {
       batch: batchId,
     });
 
     console.log("response from fetchStudentByBatch", response);
     setStudents(response.data.student);
-  };
+  }, [batchId]);
+
+  const handleFilterValue = useCallback(
+    async (rollNo) => {
+      setFilterValue(rollNo);
+
+      if (!rollNo || rollNo.trim() === "") {
+        await fetchStudentByBatch();
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const response = await axios.get("/students/search", {
+          params: {
+            batch: batchId,
+            rollNo: rollNo.trim(),
+          },
+        });
+
+        console.log("Filtered students:", response.data);
+        setStudents(response.data.students || []);
+      } catch (err) {
+        console.error("Error filtering students:", err);
+        setStudents([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [batchId, fetchStudentByBatch]
+  );
 
   const handleBack = () => {
     if (batchId) navigate(`/students`);
@@ -78,7 +77,7 @@ useEffect(() => {
   if (batchId) {
     fetchStudentByBatch();
   }
-}, [batchId]); // ✅ only runs once when batchId changes
+}, [batchId, fetchStudentByBatch]);
 
 
   const role = getCookie("role");
