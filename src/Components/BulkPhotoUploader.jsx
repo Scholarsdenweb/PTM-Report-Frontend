@@ -21,6 +21,7 @@ const BulkPhotoUploader = () => {
     skipped: [],
     invalid: [],
     renamed: [],
+    compressed: [],
   });
 
   const [message, setMessage] = useState("");
@@ -30,6 +31,7 @@ const BulkPhotoUploader = () => {
     "image/jpg",
   ];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const formatMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)}MB`;
 
   const normalizeStudentPhotoFile = (file) => {
     const extension = file.name.match(/\.jpe?g$/i)?.[0] || ".jpg";
@@ -64,6 +66,74 @@ const BulkPhotoUploader = () => {
     };
   };
 
+  const canvasToBlob = (canvas, quality) =>
+    new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+
+  const loadImage = (file) =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`Could not read image: ${file.name}`));
+      };
+      image.src = url;
+    });
+
+  const compressImageUnderLimit = async (file) => {
+    if (file.size <= MAX_FILE_SIZE) {
+      return { file, compressed: false };
+    }
+
+    const image = await loadImage(file);
+    const originalMaxDimension = Math.max(image.width, image.height);
+    const dimensionCaps = [
+      Math.min(originalMaxDimension, 2400),
+      2000,
+      1600,
+      1200,
+      900,
+      700,
+    ].filter((value, index, arr) => value > 0 && arr.indexOf(value) === index);
+    const qualities = [0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.25];
+    let smallestFile = null;
+
+    for (const maxDimension of dimensionCaps) {
+      const scale = Math.min(1, maxDimension / originalMaxDimension);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, width, height);
+
+      for (const quality of qualities) {
+        const blob = await canvasToBlob(canvas, quality);
+        if (!blob) continue;
+
+        const compressedFile = new File([blob], file.name, {
+          type: "image/jpeg",
+          lastModified: file.lastModified,
+        });
+
+        if (!smallestFile || compressedFile.size < smallestFile.size) {
+          smallestFile = compressedFile;
+        }
+
+        if (compressedFile.size <= MAX_FILE_SIZE) {
+          return { file: compressedFile, compressed: true };
+        }
+      }
+    }
+
+    return { file: smallestFile, compressed: !!smallestFile };
+  };
+
   const validateFile = (file) => {
     if (!ALLOWED_FORMATS.includes(file.type)) {
       return { valid: false, reason: `Invalid format: ${file.name}. Use JPG only.` };
@@ -79,26 +149,48 @@ const BulkPhotoUploader = () => {
         reason: `Invalid filename: ${file.name}. Expected firstname secondname_rollnumber.jpg`,
       };
     }
-    if (file.size > MAX_FILE_SIZE) {
-      const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-      return {
-        valid: false,
-        reason: `File too large: ${file.name} (${sizeMB}MB > 10MB)`,
-      };
-    }
     return { valid: true, normalized };
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selectedFiles = Array.from(e.target.files || []);
     const validFiles = [];
     const invalidFiles = [];
     const renamedFiles = [];
+    const compressedFiles = [];
 
-    selectedFiles.forEach((file) => {
+    setLoading(true);
+    setMessage("Checking and compressing images...");
+
+    for (const file of selectedFiles) {
       const validation = validateFile(file);
       if (validation.valid) {
-        validFiles.push(validation.normalized.file);
+        try {
+          const normalizedFile = validation.normalized.file;
+          const compression = await compressImageUnderLimit(normalizedFile);
+
+          if (!compression.file || compression.file.size > MAX_FILE_SIZE) {
+            invalidFiles.push(
+              `Could not compress below 10MB: ${file.name}${
+                compression.file ? ` (best: ${formatMB(compression.file.size)})` : ""
+              }`
+            );
+            continue;
+          }
+
+          validFiles.push(compression.file);
+          if (compression.compressed) {
+            compressedFiles.push({
+              name: compression.file.name,
+              from: formatMB(file.size),
+              to: formatMB(compression.file.size),
+            });
+          }
+        } catch (error) {
+          invalidFiles.push(error.message);
+          continue;
+        }
+
         if (validation.normalized.changed) {
           renamedFiles.push({
             from: validation.normalized.originalName,
@@ -108,7 +200,7 @@ const BulkPhotoUploader = () => {
       } else {
         invalidFiles.push(validation.reason);
       }
-    });
+    }
 
     setFiles(validFiles);
     setUploadStats({
@@ -126,14 +218,16 @@ const BulkPhotoUploader = () => {
       skipped: [],
       invalid: invalidFiles,
       renamed: renamedFiles,
+      compressed: compressedFiles,
     });
     setMessage(
       invalidFiles.length
-        ? `⚠️ ${invalidFiles.length} invalid file(s) skipped.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}`
+        ? `⚠️ ${invalidFiles.length} invalid file(s) skipped.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}${compressedFiles.length ? `\n✓ ${compressedFiles.length} image(s) compressed below 10MB.` : ""}`
         : validFiles.length
-        ? `✓ ${validFiles.length} valid image(s) ready to upload.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}`
+        ? `✓ ${validFiles.length} valid image(s) ready to upload.${renamedFiles.length ? `\n✓ ${renamedFiles.length} filename(s) will be renamed automatically.` : ""}${compressedFiles.length ? `\n✓ ${compressedFiles.length} image(s) compressed below 10MB.` : ""}`
         : "No valid images selected."
     );
+    setLoading(false);
   };
 
   const handleUpload = async () => {
@@ -151,6 +245,7 @@ const BulkPhotoUploader = () => {
       skipped: [],
       invalid: results.invalid,
       renamed: results.renamed,
+      compressed: results.compressed,
     });
 
     const formData = new FormData();
@@ -298,6 +393,7 @@ const BulkPhotoUploader = () => {
           results.failed.length > 0 ||
           results.skipped.length > 0 ||
           results.renamed.length > 0 ||
+          results.compressed.length > 0 ||
           results.invalid.length > 0) && (
           <div className="mt-6 space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">
@@ -329,6 +425,25 @@ const BulkPhotoUploader = () => {
                       <span className="text-gray-600">{item.from}</span>
                       <span className="mx-2">→</span>
                       <span className="font-medium">{item.to}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {results.compressed.length > 0 && (
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded">
+                <p className="font-semibold text-indigo-700 mb-2">
+                  Compressed Before Upload ({results.compressed.length})
+                </p>
+                <ol className="text-sm text-indigo-800 list-decimal list-inside max-h-40 overflow-auto">
+                  {results.compressed.map((item, i) => (
+                    <li key={i}>
+                      <span className="font-medium">{item.name}</span>
+                      <span className="mx-2">:</span>
+                      <span>{item.from}</span>
+                      <span className="mx-2">→</span>
+                      <span>{item.to}</span>
                     </li>
                   ))}
                 </ol>

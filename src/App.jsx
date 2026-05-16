@@ -272,7 +272,6 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin", "Faculty"]}
             >
               <SidebarLayout>
                 <SendWhatsappMessage />

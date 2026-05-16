@@ -89,6 +89,27 @@
 
 import React from "react";
 
+const normalizeDateKey = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toISOString().slice(0, 10);
+  }
+  return String(value).trim();
+};
+
+const getDateValue = (date) => {
+  if (typeof date === "object" && date !== null) {
+    return date.date || date.value || "";
+  }
+  return date;
+};
+
+const getDateEmbeddedStats = (date) => {
+  if (typeof date !== "object" || date === null) return null;
+  return date.stats || date;
+};
+
 // Generate soft pastel color based on index
 const getLightColorByIndex = (index) => {
   const hue = (index * 47) % 360;
@@ -97,19 +118,31 @@ const getLightColorByIndex = (index) => {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 };
 
-const DateList = ({ dates, selectedDate, onSelect }) => {
+const DateList = ({ dates, selectedDate, selected, onSelect, dateStats = [] }) => {
   const hasDates = dates && dates.length > 0;
+  const selectedValue = selectedDate || selected;
+  const hasStats = dateStats.length > 0 || dates.some((date) => {
+    const stats = getDateEmbeddedStats(date);
+    return stats?.count !== undefined;
+  });
+  const statsByDate = new Map(
+    dateStats.map((item) => [normalizeDateKey(item.date), Number(item.count || 0)])
+  );
 
   return (
-    <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-3 text-gray-800">
-        Select Report Date
-      </h3>
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-xl font-semibold text-slate-900">Select Report Date</h3>
+        <p className="text-sm text-slate-500">
+          {hasDates ? `${dates.length} report dates available` : "No report dates available"}
+        </p>
+      </div>
 
       {hasDates ? (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {dates.map((date, index) => {
-            const dateObj = new Date(date);
+            const dateValue = getDateValue(date);
+            const dateObj = new Date(dateValue);
 
             const formattedDate = dateObj.toLocaleDateString(undefined, {
               year: "numeric",
@@ -121,18 +154,23 @@ const DateList = ({ dates, selectedDate, onSelect }) => {
               weekday: "short",
             });
 
-            const isSelected = date === selectedDate;
+            const isSelected = dateValue === selectedValue;
             const bgColor = getLightColorByIndex(index);
+            const embeddedStats = getDateEmbeddedStats(date);
+            const embeddedCount = embeddedStats?.count;
+            const count = statsByDate.get(normalizeDateKey(dateValue)) ?? Number(embeddedCount || 0);
+            const statsReady = statsByDate.has(normalizeDateKey(dateValue)) || embeddedCount !== undefined;
 
             return (
-              <div
-                key={date}
-                onClick={() => onSelect(date)}
-                className={`flex flex-col items-center justify-center text-center p-4 rounded-lg cursor-pointer transition-all duration-200 border text-sm font-medium
+              <button
+                type="button"
+                key={dateValue}
+                onClick={() => onSelect(dateValue)}
+                className={`flex flex-col items-center justify-center text-center p-4 rounded-lg cursor-pointer transition-all duration-200 border text-sm font-medium shadow-sm hover:-translate-y-0.5 hover:shadow-md
                   ${
                     isSelected
-                      ? "border-2 border-green-600 shadow-md"
-                      : "border border-gray-200 hover:border-green-400"
+                      ? "border-green-600 ring-2 ring-green-100"
+                      : "border-gray-200 hover:border-green-400"
                   }`}
                 style={{ backgroundColor: bgColor }}
               >
@@ -140,7 +178,10 @@ const DateList = ({ dates, selectedDate, onSelect }) => {
                   {formattedDate}
                 </span>
                 <span className="text-xs text-gray-600">{weekday}</span>
-              </div>
+                <span className="mt-2 rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                  {hasStats && statsReady ? `${count} reports` : "Counts loading..."}
+                </span>
+              </button>
             );
           })}
         </div>
