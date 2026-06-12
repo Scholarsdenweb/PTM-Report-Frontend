@@ -24,7 +24,9 @@ import { ProgressProvider } from "./context/ProgressContext";
 // NEW: Protected route wrapper
 const ProtectedRoute = ({ isLoggedIn, userRole, allowedRoles, children }) => {
   if (!isLoggedIn) return <Navigate to="/login" />;
-  if (!allowedRoles.includes(userRole)) return <Navigate to="/reports" />;
+  if (!allowedRoles?.includes(userRole)) {
+    return <Navigate to={userRole === "Admin" ? "/uploadForm" : "/reports"} replace />;
+  }
   return children;
 };
 
@@ -153,7 +155,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin"]}
+              allowedRoles={["Admin", "Faculty"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />
@@ -168,7 +170,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin"]}
+              allowedRoles={["Admin", "Faculty"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />
@@ -183,7 +185,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
-              allowedRoles={["Admin"]}
+              allowedRoles={["Admin", "Faculty"]}
             >
               <SidebarLayout>
                 <AdminReportViewer />
@@ -272,6 +274,7 @@ function App() {
             <ProtectedRoute
               isLoggedIn={isLoggedIn}
               userRole={role}
+              allowedRoles={["Admin", "Faculty"]}
             >
               <SidebarLayout>
                 <SendWhatsappMessage />

@@ -418,6 +418,7 @@ const UploadForm = ({ type = "generate" }) => {
       "Total",
       "Rank",
       "Highest_Marks",
+      "Highest Marks",
       "High",
     ];
     const VALID_SUBJECTIVE_SUBJECTS = [
@@ -437,6 +438,7 @@ const UploadForm = ({ type = "generate" }) => {
       "Total(80)",
       "Rank",
       "Highest_Marks",
+      "Highest Marks",
       "High",
     ];
     const VALID_BOARD_SUBJECTS = [
@@ -462,6 +464,7 @@ const UploadForm = ({ type = "generate" }) => {
       "Zoology",
       "Physical Chemistry",
       "Organic Chemistry",
+      "Inorganic Chemistry",
       "History & Civics",
       "Geography",
       "Biology",
@@ -999,9 +1002,21 @@ const UploadForm = ({ type = "generate" }) => {
     // Validate complete result sets
     resultDates.forEach((date) => {
       const baseFields = [
-        `Result_${date}_Rank`,
-        `Result_${date}_Total`,
-        `Result_${date}_Highest_Marks`,
+        {
+          label: `Result_${date}_Rank`,
+          alternatives: [`Result_${date}_Rank`],
+        },
+        {
+          label: `Result_${date}_Total`,
+          alternatives: [`Result_${date}_Total`],
+        },
+        {
+          label: `Result_${date}_Highest_Marks or Result_${date}_Highest Marks`,
+          alternatives: [
+            `Result_${date}_Highest_Marks`,
+            `Result_${date}_Highest Marks`,
+          ],
+        },
       ];
 
       // Check for at least one subject
@@ -1020,9 +1035,11 @@ const UploadForm = ({ type = "generate" }) => {
         rawHeaders.includes(`Result_${date}_${subject}`)
       );
 
-      const missingFields = baseFields.filter(
-        (field) => !rawHeaders.includes(field)
-      );
+      const missingFields = baseFields
+        .filter((field) =>
+          !field.alternatives.some((alternative) => rawHeaders.includes(alternative))
+        )
+        .map((field) => field.label);
 
       if (missingFields.length > 0 || !hasSubject) {
         const sheetLabel = getRelatedSheetLabel(
@@ -1042,7 +1059,7 @@ const UploadForm = ({ type = "generate" }) => {
           type: "INCOMPLETE_RESULT_SET",
           message: `❌ Incomplete result fields for ${date} in ${sheetLabel}`,
           details: issues.join("; "),
-          expected: `Required: Rank, at least one subject, Total, and Highest_Marks`,
+          expected: `Required: Rank, at least one subject, Total, and either Highest_Marks or Highest Marks`,
           example: `Result_${date}_Rank, Result_${date}_Phy, Result_${date}_Chem, Result_${date}_Bio, Result_${date}_Total, Result_${date}_Highest_Marks`,
           fix: `Add the missing result columns for ${date}`,
         });
@@ -1992,7 +2009,7 @@ const UploadForm = ({ type = "generate" }) => {
                     <p className="font-semibold mt-3">Valid Subjects:</p>
                     <p className="text-gray-600">
                       Physics, Phy, Chemistry, Chem, Mathematics, Maths, Math,
-                      Biology, Bio, Total, Tot, Rank, Highest_Marks, High
+                      Biology, Bio, Total, Tot, Rank, Highest_Marks, Highest Marks, High
                     </p>
 
                     <p className="font-semibold mt-3">
@@ -2002,7 +2019,7 @@ const UploadForm = ({ type = "generate" }) => {
                       <li>At least one subject column</li>
                       <li>Result_Date_Total</li>
                       <li>Result_Date_Rank</li>
-                      <li>Result_Date_Highest_Marks</li>
+                      <li>Result_Date_Highest_Marks or Result_Date_Highest Marks</li>
                     </ul>
 
                     <p className="text-blue-600 mt-3">
@@ -2033,7 +2050,7 @@ const UploadForm = ({ type = "generate" }) => {
                     <p className="text-gray-600">
                       Phy(10), Chem(10), Bio(10), Math(25), Maths(25), Eng(15),
                       Eng(10), SST(30), Total(100), Total(120), Total, Rank,
-                      Highest_Marks
+                      Highest_Marks, Highest Marks
                     </p>
 
                     <p className="text-blue-600 mt-3">
@@ -2060,7 +2077,7 @@ const UploadForm = ({ type = "generate" }) => {
                     <p className="font-semibold">Valid Subjects:</p>
                     <p className="text-gray-600">
                       Phy(14), Chem(13), Bio(13), Maths(20), Math(20),
-                      Total(40), Rank, Highest_Marks
+                      Total(40), Rank, Highest_Marks, Highest Marks
                     </p>
 
                     <p className="text-blue-600 mt-3">
@@ -2169,12 +2186,12 @@ const UploadForm = ({ type = "generate" }) => {
                       </p>
                       <p className="text-gray-600 mb-2">
                         Valid Fields:{" "}
-                        <strong>Grand_Total, Rank, High, Highest_Marks</strong>
+                        <strong>Grand_Total, Rank, High, Highest_Marks, Highest Marks</strong>
                       </p>
                       <ul className="list-disc list-inside text-gray-700 space-y-1">
                         <li>JEE_ADV_Result_07 Jul_Grand_Total</li>
                         <li>JEE_ADV_Result_07 Jul_Rank</li>
-                        <li>JEE_ADV_Result_07 Jul_High (or Highest_Marks)</li>
+                        <li>JEE_ADV_Result_07 Jul_High (or Highest_Marks / Highest Marks)</li>
                       </ul>
                     </div>
 
@@ -2193,7 +2210,7 @@ const UploadForm = ({ type = "generate" }) => {
                         </li>
                         <li>
                           <strong>Common columns required:</strong> Grand_Total,
-                          Rank, and either High or Highest_Marks
+                          Rank, and either High, Highest_Marks, or Highest Marks
                         </li>
                         <li>
                           Date format must be "DD Month" (e.g., 07 Jul) with
