@@ -467,6 +467,7 @@ const UploadForm = ({ type = "generate" }) => {
       "Inorganic Chemistry",
       "History & Civics",
       "Geography",
+      "Geography & Economics",
       "Biology",
       "English",
       "Total",

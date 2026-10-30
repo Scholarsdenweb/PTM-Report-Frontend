@@ -16,6 +16,7 @@ const StudentReport = () => {
   const [loading, setLoading] = useState("");
 
   const [batches, setBatches] = useState([]);
+  const [batchStats, setBatchStats] = useState([]);
 
   const navigate = useNavigate();
 
@@ -42,6 +43,7 @@ const StudentReport = () => {
       .then((res) => {
         console.log("res from batches from the useEffect", res.data.batches);
         setBatches(res.data.batches);
+        setBatchStats(res.data.batchStats || res.data.stats || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -154,6 +156,7 @@ const StudentReport = () => {
         <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <BatchList
             batches={batches}
+            batchStats={batchStats}
             onSelect={handleBatchSelect}
             selected={batchId}
           />
